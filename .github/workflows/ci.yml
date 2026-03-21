@@ -58,3 +58,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Docker Compose
         run: docker compose config --quiet
+        env:
+          DB_PASSWORD: ci-test
+          ICECAST_SOURCE_PASSWORD: ci-test
+          ICECAST_ADMIN_PASSWORD: ci-test
