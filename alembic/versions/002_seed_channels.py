@@ -22,21 +22,21 @@ def upgrade() -> None:
             default_bpm_min, default_bpm_max, default_duration,
             default_key, default_instrumental, prompt_template, vocal_language)
         VALUES
-            ('lofi', 'LoFi Beats',
-             'Chill lo-fi hip hop beats to relax and study to',
+            ('lofi', 'LoFi ビーツ',
+             'リラックス＆勉強用のチルなローファイ・ヒップホップ',
              true, 70, 90, 180, 'Cm', true,
              'lo-fi hip hop beat, chill, relaxed, vinyl crackle, mellow piano, '
              || 'ambient pads, soft drums, warm bass, nostalgic, cozy atmosphere',
              NULL),
-            ('anime', 'Anime Songs',
-             'AI-generated anime opening and ending themes',
+            ('anime', 'アニソン',
+             'AIが生成したアニメのオープニング＆エンディングテーマ',
              true, 120, 160, 90, 'C', false,
              'anime opening theme, energetic, J-pop, catchy melody, '
              || 'orchestral arrangement, electric guitar, powerful vocals, '
              || 'dramatic, uplifting, epic chorus',
              'ja'),
-            ('jazz', 'Jazz Station',
-             'Smooth jazz, improvisation, and classic vibes',
+            ('jazz', 'ジャズステーション',
+             'スムースジャズ、即興演奏、クラシックな雰囲気',
              true, 100, 140, 240, NULL, true,
              'jazz, smooth, saxophone solo, piano comping, upright bass walking, '
              || 'brush drums, improvisational, warm tone, sophisticated harmony, '

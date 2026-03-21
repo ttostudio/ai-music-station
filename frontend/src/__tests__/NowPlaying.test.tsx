@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 const mockTrack: Track = {
   id: "1",
-  caption: "Rainy day lo-fi beat",
+  caption: "雨の日のローファイビート",
   duration_ms: 180000,
   bpm: 85,
   music_key: "Am",
@@ -19,13 +19,15 @@ const mockTrack: Track = {
 describe("NowPlaying", () => {
   it("shows placeholder when no track", () => {
     render(<NowPlaying track={null} />);
-    expect(screen.getAllByText(/No track playing/).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/再生中のトラックはありません/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("shows track caption", () => {
     render(<NowPlaying track={mockTrack} />);
     expect(
-      screen.getAllByText("Rainy day lo-fi beat").length,
+      screen.getAllByText("雨の日のローファイビート").length,
     ).toBeGreaterThan(0);
   });
 
@@ -36,11 +38,11 @@ describe("NowPlaying", () => {
 
   it("shows key", () => {
     render(<NowPlaying track={mockTrack} />);
-    expect(screen.getAllByText("Key: Am").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("キー: Am").length).toBeGreaterThan(0);
   });
 
   it("shows instrumental label", () => {
     render(<NowPlaying track={mockTrack} />);
-    expect(screen.getAllByText("Instrumental").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("インスト").length).toBeGreaterThan(0);
   });
 });

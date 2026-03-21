@@ -15,9 +15,9 @@ router = APIRouter()
 async def health(session: AsyncSession = Depends(get_session)) -> HealthResponse:
     try:
         await session.execute(text("SELECT 1"))
-        db_status = "connected"
+        db_status = "接続済み"
     except Exception:
-        db_status = "disconnected"
+        db_status = "未接続"
 
     result = await session.execute(
         select(func.count()).select_from(Channel).where(Channel.is_active.is_(True))
@@ -25,7 +25,7 @@ async def health(session: AsyncSession = Depends(get_session)) -> HealthResponse
     active = result.scalar() or 0
 
     return HealthResponse(
-        status="healthy" if db_status == "connected" else "degraded",
+        status="正常" if db_status == "接続済み" else "低下",
         database=db_status,
         channels_active=active,
     )

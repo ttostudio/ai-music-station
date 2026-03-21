@@ -1,135 +1,134 @@
-# AI Music Station — Software Design Document
+# AI Music Station — ソフトウェア設計書
 
-## 1. Overview
+## 1. 概要
 
-AI Music Station is a web application that generates music using ACE-Step v1.5 on Apple Silicon and streams it like a radio station. Users select a channel (LoFi, Anime, Jazz, etc.), optionally request specific songs, and listen to a continuous audio stream in the browser.
+AI Music Station は、Apple Silicon 上で ACE-Step v1.5 を使用して音楽を生成し、ラジオステーションのようにストリーミング配信する Web アプリケーションです。ユーザーはチャンネル（LoFi、アニソン、ジャズなど）を選択し、楽曲をリクエストして、ブラウザで連続オーディオストリームを視聴できます。
 
-## 2. Architecture
+## 2. アーキテクチャ
 
 ```
-Browser → Caddy (:3200) → Frontend (React SPA, nginx)
-                        → /api/* → FastAPI (:8000)
-                        → /stream/* → Icecast2 (:8000)
+ブラウザ → Caddy (:3200) → フロントエンド (React SPA, nginx)
+                          → /api/* → FastAPI (:8000)
+                          → /stream/* → Icecast2 (:8000)
 
-Icecast2 ← Liquidsoap (1 per channel, reads FLAC from shared volume)
-FastAPI ← PostgreSQL (:5432) ← Worker (host-native Python process)
-Worker → ACE-Step REST API (:8001, host-native MLX/MPS) → FLAC files → ./generated_tracks/
+Icecast2 ← Liquidsoap (チャンネル毎に1つ、共有ボリュームからFLACを読み取り)
+FastAPI ← PostgreSQL (:5432) ← ワーカー (ホストネイティブ Python プロセス)
+ワーカー → ACE-Step REST API (:8001, ホストネイティブ MLX/MPS) → FLAC → ./generated_tracks/
 ```
 
-### Services
+### サービス一覧
 
-| Service | Runtime | Port | Description |
-|---------|---------|------|-------------|
-| postgres | Docker | 5432 | PostgreSQL 16 — queue, metadata, channels |
-| api | Docker | 8000 | FastAPI — REST API for channels, requests, tracks |
-| icecast | Docker | 8000 | Icecast2 — audio streaming server |
-| liquidsoap-{channel} | Docker | — | Liquidsoap — reads tracks, feeds Icecast mount |
-| frontend | Docker | 80 | React SPA served by nginx |
-| caddy | Docker | 3200 | Reverse proxy (entry point) |
-| migrate | Docker | — | Alembic migration runner (run-once) |
-| worker | Host | — | ACE-Step queue consumer (Apple Silicon native) |
-| ace-step | Host | 8001 | ACE-Step REST API (`uv run acestep-api`) |
+| サービス | 実行環境 | ポート | 説明 |
+|---------|---------|-------|------|
+| postgres | Docker | 5432 | PostgreSQL 16 — キュー、メタデータ、チャンネル |
+| api | Docker | 8000 | FastAPI — REST API |
+| icecast | Docker | 8000 | Icecast2 — オーディオストリーミングサーバー |
+| liquidsoap-{channel} | Docker | — | Liquidsoap — トラック読み取り、Icecast マウント配信 |
+| frontend | Docker | 80 | React SPA (nginx 配信) |
+| caddy | Docker | 3200 | リバースプロキシ（エントリポイント） |
+| migrate | Docker | — | Alembic マイグレーションランナー（1回実行） |
+| worker | ホスト | — | ACE-Step キューコンシューマー (Apple Silicon ネイティブ) |
+| ace-step | ホスト | 8001 | ACE-Step REST API (`uv run acestep-api`) |
 
-## 3. Database Schema
+## 3. データベーススキーマ
 
-### channels
+### channels テーブル
 
-| Column | Type | Description |
-|--------|------|-------------|
+| カラム | 型 | 説明 |
+|--------|------|------|
 | id | UUID PK | |
-| slug | VARCHAR(50) UNIQUE | URL-safe identifier (e.g., "lofi") |
-| name | VARCHAR(100) | Display name (e.g., "LoFi Beats") |
-| description | TEXT | Channel description |
-| is_active | BOOLEAN | Whether channel accepts requests |
-| default_bpm_min | INTEGER | Min BPM for generation |
-| default_bpm_max | INTEGER | Max BPM for generation |
-| default_duration | INTEGER | Default track duration (seconds) |
-| default_key | VARCHAR(10) | Default musical key |
-| default_instrumental | BOOLEAN | Default instrumental flag |
-| prompt_template | TEXT | Base caption template for ACE-Step |
-| vocal_language | VARCHAR(10) | Language code (e.g., "ja", "en") |
+| slug | VARCHAR(50) UNIQUE | URL セーフ識別子（例: "lofi"） |
+| name | VARCHAR(100) | 表示名（例: "LoFi ビーツ"） |
+| description | TEXT | チャンネル説明 |
+| is_active | BOOLEAN | リクエスト受付可否 |
+| default_bpm_min | INTEGER | 生成時の最小 BPM |
+| default_bpm_max | INTEGER | 生成時の最大 BPM |
+| default_duration | INTEGER | デフォルトトラック長（秒） |
+| default_key | VARCHAR(10) | デフォルト音楽キー |
+| default_instrumental | BOOLEAN | デフォルトインスト設定 |
+| prompt_template | TEXT | ACE-Step 用ベースキャプションテンプレート |
+| vocal_language | VARCHAR(10) | 言語コード（例: "ja", "en"） |
 | created_at | TIMESTAMPTZ | |
 | updated_at | TIMESTAMPTZ | |
 
-### requests
+### requests テーブル
 
-| Column | Type | Description |
-|--------|------|-------------|
+| カラム | 型 | 説明 |
+|--------|------|------|
 | id | UUID PK | |
 | channel_id | UUID FK→channels | |
 | status | VARCHAR(20) | pending → processing → completed / failed |
-| caption | TEXT | User-provided description |
-| lyrics | TEXT | User-provided lyrics |
-| bpm | INTEGER | Requested BPM override |
-| duration | INTEGER | Requested duration override (seconds) |
-| music_key | VARCHAR(10) | Requested key override |
-| worker_id | VARCHAR(100) | Hostname of claiming worker |
-| started_at | TIMESTAMPTZ | When processing began |
-| completed_at | TIMESTAMPTZ | When processing finished |
-| error_message | TEXT | Error details if failed |
+| caption | TEXT | ユーザー提供の説明 |
+| lyrics | TEXT | ユーザー提供の歌詞 |
+| bpm | INTEGER | リクエスト BPM オーバーライド |
+| duration | INTEGER | リクエスト長オーバーライド（秒） |
+| music_key | VARCHAR(10) | リクエストキーオーバーライド |
+| worker_id | VARCHAR(100) | 処理中ワーカーのホスト名 |
+| started_at | TIMESTAMPTZ | 処理開始時刻 |
+| completed_at | TIMESTAMPTZ | 処理完了時刻 |
+| error_message | TEXT | 失敗時のエラー詳細 |
 | created_at | TIMESTAMPTZ | |
 | updated_at | TIMESTAMPTZ | |
 
-### tracks
+### tracks テーブル
 
-| Column | Type | Description |
-|--------|------|-------------|
+| カラム | 型 | 説明 |
+|--------|------|------|
 | id | UUID PK | |
 | request_id | UUID FK→requests (UNIQUE) | |
 | channel_id | UUID FK→channels | |
-| file_path | VARCHAR(500) | Relative path in generated_tracks/ |
-| file_size | BIGINT | File size in bytes |
-| duration_ms | INTEGER | Actual audio duration |
-| sample_rate | INTEGER | Sample rate (default 48000) |
-| caption | TEXT | Actual caption sent to ACE-Step |
-| lyrics | TEXT | Actual lyrics sent |
-| bpm | INTEGER | Actual BPM used |
-| music_key | VARCHAR(10) | Actual key used |
-| instrumental | BOOLEAN | Whether instrumental |
-| num_steps | INTEGER | Denoising steps used |
-| cfg_scale | FLOAT | CFG scale used |
-| seed | BIGINT | Random seed used |
-| play_count | INTEGER | Times played on stream |
+| file_path | VARCHAR(500) | generated_tracks/ 内の相対パス |
+| file_size | BIGINT | ファイルサイズ（バイト） |
+| duration_ms | INTEGER | 実際のオーディオ長 |
+| sample_rate | INTEGER | サンプルレート（デフォルト 48000） |
+| caption | TEXT | ACE-Step に送信した実際のキャプション |
+| lyrics | TEXT | 実際の歌詞 |
+| bpm | INTEGER | 実際の BPM |
+| music_key | VARCHAR(10) | 実際のキー |
+| instrumental | BOOLEAN | インストかどうか |
+| num_steps | INTEGER | デノイジングステップ数 |
+| cfg_scale | FLOAT | CFG スケール |
+| seed | BIGINT | ランダムシード |
+| play_count | INTEGER | ストリーム再生回数 |
 | last_played_at | TIMESTAMPTZ | |
 | created_at | TIMESTAMPTZ | |
 
-### now_playing
+### now_playing テーブル
 
-| Column | Type | Description |
-|--------|------|-------------|
+| カラム | 型 | 説明 |
+|--------|------|------|
 | channel_id | UUID PK FK→channels | |
 | track_id | UUID FK→tracks | |
-| started_at | TIMESTAMPTZ | When track started playing |
+| started_at | TIMESTAMPTZ | トラック再生開始時刻 |
 
-### Indexes
+### インデックス
 
 - `idx_requests_pending` — `(status, created_at) WHERE status = 'pending'`
 - `idx_requests_channel` — `(channel_id, status)`
 - `idx_tracks_channel` — `(channel_id, created_at DESC)`
 
-## 4. API Contract
+## 4. API コントラクト
 
-Base URL: `/api`
+ベース URL: `/api`
 
-### Health
+### ヘルスチェック
 
 ```
 GET /api/health → 200
 {
-  "status": "healthy",
-  "database": "connected",
-  "worker_last_seen": "ISO8601" | null,
+  "status": "正常",
+  "database": "接続済み",
   "channels_active": 3
 }
 ```
 
-### Channels
+### チャンネル
 
 ```
 GET /api/channels → 200
 {
   "channels": [{
-    "id": "uuid", "slug": "lofi", "name": "LoFi Beats",
+    "id": "uuid", "slug": "lofi", "name": "LoFi ビーツ",
     "description": "...", "is_active": true,
     "queue_depth": 3, "total_tracks": 42,
     "stream_url": "/stream/lofi.ogg",
@@ -138,10 +137,10 @@ GET /api/channels → 200
 }
 
 GET /api/channels/{slug} → 200 | 404
-  Same as above + default_bpm_min, default_bpm_max, default_duration, default_instrumental
+  上記に加えて default_bpm_min, default_bpm_max, default_duration, default_instrumental を含む
 ```
 
-### Requests
+### リクエスト
 
 ```
 POST /api/channels/{slug}/requests → 201 | 404 | 422
@@ -155,7 +154,7 @@ GET /api/requests/{id} → 200 | 404
 { "id", "channel_slug", "status", "caption", "position", "created_at", "started_at", "completed_at", "track": {...} | null }
 ```
 
-### Tracks
+### トラック
 
 ```
 GET /api/channels/{slug}/tracks?limit=20&offset=0 → 200
@@ -165,7 +164,7 @@ GET /api/channels/{slug}/now-playing → 200
 { "track": { "id", "caption", "duration_ms", "elapsed_ms", "bpm", "music_key" } | null }
 ```
 
-### Internal (not exposed via Caddy)
+### 内部エンドポイント（Caddy 経由で非公開）
 
 ```
 POST /internal/now-playing
@@ -175,79 +174,79 @@ POST /internal/worker-heartbeat
 Body: { "worker_id": "macmini-1", "active_request_id": "uuid" | null } → 200
 ```
 
-## 5. Streaming Architecture
+## 5. ストリーミングアーキテクチャ
 
 ### Icecast2
 
-Mount points per channel:
+チャンネル毎のマウントポイント:
 - `/lofi.ogg` — OGG Vorbis
 - `/anime.ogg` — OGG Vorbis
 - `/jazz.ogg` — OGG Vorbis
 
 ### Liquidsoap
 
-One container per channel. Each:
-1. Watches `generated_tracks/{channel_slug}/` for FLAC files
-2. Maintains a playlist with automatic reload
-3. Crossfades between tracks (3-second fade)
-4. Falls back to silence when no tracks exist
-5. Encodes to OGG Vorbis and pushes to Icecast mount point
-6. Calls `/internal/now-playing` on track change
+チャンネル毎に1コンテナ。各コンテナは:
+1. `generated_tracks/{channel_slug}/` の FLAC ファイルを監視
+2. 自動リロードでプレイリストを管理
+3. トラック間のクロスフェード（3秒）
+4. トラックがない場合は無音にフォールバック
+5. OGG Vorbis にエンコードして Icecast マウントポイントにプッシュ
+6. トラック変更時に `/internal/now-playing` を呼び出し
 
-### Browser Playback
+### ブラウザ再生
 
-HTML5 `<audio>` element pointed at Icecast stream URL via Caddy:
+HTML5 `<audio>` 要素で Caddy 経由の Icecast ストリーム URL を指定:
 ```
 <audio src="/stream/lofi.ogg" />
 ```
 
-## 6. ACE-Step Worker
+## 6. ACE-Step ワーカー
 
-Runs natively on Mac mini (not Docker) for MPS/MLX access.
+Mac mini 上でネイティブ実行（Docker 外）、MPS/MLX アクセス用。
 
-### Connection
+### 接続
 
-- PostgreSQL: `localhost:5432` (exposed by Docker)
-- ACE-Step API: `localhost:8001` (host-native `uv run acestep-api`)
-- Output: `./generated_tracks/{channel_slug}/{track_id}.flac` (bind mount)
+- PostgreSQL: `localhost:5432`（Docker が公開）
+- ACE-Step API: `localhost:8001`（ホストネイティブ `uv run acestep-api`）
+- 出力: `./generated_tracks/{channel_slug}/{track_id}.flac`（バインドマウント）
 
-### Queue Processing Loop
+### キュー処理ループ
 
 ```
-every 2 seconds:
+2秒毎:
   SELECT * FROM requests WHERE status='pending'
     ORDER BY created_at
     FOR UPDATE SKIP LOCKED LIMIT 1
 
-  if found:
+  見つかった場合:
     UPDATE status='processing', worker_id=hostname, started_at=now()
-    build params from request + channel presets
+    リクエスト + チャンネルプリセットからパラメータ構築
     POST http://localhost:8001/generate → FLAC
-    save to generated_tracks/{channel}/{id}.flac
-    INSERT INTO tracks
-    UPDATE request status='completed'
+    generated_tracks/{channel}/{id}.flac に保存
+    tracks テーブルに INSERT
+    リクエストの status='completed' に UPDATE
 
-  on error:
-    UPDATE request status='failed', error_message=str(error)
+  エラー時:
+    status='failed', error_message=str(error) に UPDATE
 ```
 
-### Channel Presets
+### チャンネルプリセット
 
-| Channel | BPM | Key | Instrumental | Language | Prompt Template |
-|---------|-----|-----|-------------|----------|-----------------|
-| LoFi | 70-90 | minor | true | — | "lo-fi hip hop beat, chill, relaxed, vinyl crackle, mellow piano, ambient" |
-| Anime | 120-160 | major | false | ja | "anime opening theme, energetic, J-pop, catchy melody, orchestral" |
-| Jazz | 100-140 | various | true | — | "jazz, smooth, saxophone, piano, upright bass, drums, improvisational" |
+| チャンネル | BPM | キー | インスト | 言語 | プロンプトテンプレート |
+|-----------|-----|-----|---------|------|---------------------|
+| LoFi ビーツ | 70-90 | マイナー | はい | — | "lo-fi hip hop beat, chill, relaxed..." |
+| アニソン | 120-160 | メジャー | いいえ | ja | "anime opening theme, energetic, J-pop..." |
+| ジャズステーション | 100-140 | 各種 | はい | — | "jazz, smooth, saxophone, piano..." |
 
 ## 7. Docker Compose
 
-Project name: `product-ai-music-station`
+プロジェクト名: `product-ai-music-station`
 
-Services: postgres, migrate, api, icecast, liquidsoap-lofi, liquidsoap-anime, liquidsoap-jazz, frontend, caddy
+サービス: postgres, migrate, api, icecast, liquidsoap-lofi, liquidsoap-anime, liquidsoap-jazz, frontend, caddy
 
-All services have health checks. Secrets via `.env` file.
+全サービスにヘルスチェックあり。シークレットは `.env` ファイル経由。
 
-### Caddy Routing
+### Caddy ルーティング
 
 ```
 :3200 {
@@ -264,10 +263,10 @@ All services have health checks. Secrets via `.env` file.
 }
 ```
 
-## 8. Default Channels
+## 8. デフォルトチャンネル
 
-| Slug | Name | Description |
-|------|------|-------------|
-| lofi | LoFi Beats | Chill lo-fi hip hop beats to relax and study to |
-| anime | Anime Songs | AI-generated anime opening and ending themes |
-| jazz | Jazz Station | Smooth jazz, improvisation, and classic vibes |
+| スラッグ | 名前 | 説明 |
+|---------|------|------|
+| lofi | LoFi ビーツ | リラックス＆勉強用のチルなローファイ・ヒップホップ |
+| anime | アニソン | AIが生成したアニメのオープニング＆エンディングテーマ |
+| jazz | ジャズステーション | スムースジャズ、即興演奏、クラシックな雰囲気 |

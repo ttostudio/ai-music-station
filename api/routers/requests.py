@@ -34,7 +34,7 @@ async def create_request(
     )
     channel = result.scalar_one_or_none()
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
 
     req = Request(
         channel_id=channel.id,
@@ -84,7 +84,7 @@ async def list_requests(
     )
     channel = result.scalar_one_or_none()
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
 
     query = (
         select(Request)
@@ -150,7 +150,7 @@ async def get_request(
 ) -> RequestDetailResponse:
     req = await session.get(Request, request_id)
     if not req:
-        raise HTTPException(status_code=404, detail="Request not found")
+        raise HTTPException(status_code=404, detail="リクエストが見つかりません")
 
     channel_result = await session.execute(
         select(Channel).where(Channel.id == req.channel_id)

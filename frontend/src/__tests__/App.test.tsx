@@ -8,7 +8,7 @@ describe("App", () => {
   it("renders loading state initially", () => {
     render(<App />);
     expect(
-      screen.getAllByText("Loading channels...").length,
+      screen.getAllByText("チャンネルを読み込み中...").length,
     ).toBeGreaterThan(0);
   });
 });

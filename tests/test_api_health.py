@@ -26,6 +26,6 @@ def test_health_endpoint_returns_200():
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] in ("healthy", "degraded")
+        assert data["status"] in ("正常", "低下")
 
     app.dependency_overrides.clear()

@@ -22,7 +22,7 @@ export function ChannelSelector({ channels, activeSlug, onSelect }: Props) {
           <span>{channel.name}</span>
           {channel.queue_depth > 0 && (
             <span className="ml-2 text-xs opacity-70">
-              ({channel.queue_depth} queued)
+              ({channel.queue_depth}件待ち)
             </span>
           )}
         </button>

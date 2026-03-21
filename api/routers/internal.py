@@ -23,7 +23,7 @@ async def update_now_playing(
     )
     channel = result.scalar_one_or_none()
     if not channel:
-        return {"ok": False, "error": "Channel not found"}
+        return {"ok": False, "error": "チャンネルが見つかりません"}
 
     np = await session.get(NowPlaying, channel.id)
     if np:

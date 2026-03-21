@@ -20,8 +20,8 @@ class ChannelPreset:
 PRESETS: dict[str, ChannelPreset] = {
     "lofi": ChannelPreset(
         slug="lofi",
-        name="LoFi Beats",
-        description="Chill lo-fi hip hop beats to relax and study to",
+        name="LoFi ビーツ",
+        description="リラックス＆勉強用のチルなローファイ・ヒップホップ",
         bpm_min=70,
         bpm_max=90,
         duration=180,
@@ -35,8 +35,8 @@ PRESETS: dict[str, ChannelPreset] = {
     ),
     "anime": ChannelPreset(
         slug="anime",
-        name="Anime Songs",
-        description="AI-generated anime opening and ending themes",
+        name="アニソン",
+        description="AIが生成したアニメのオープニング＆エンディングテーマ",
         bpm_min=120,
         bpm_max=160,
         duration=90,
@@ -51,8 +51,8 @@ PRESETS: dict[str, ChannelPreset] = {
     ),
     "jazz": ChannelPreset(
         slug="jazz",
-        name="Jazz Station",
-        description="Smooth jazz, improvisation, and classic vibes",
+        name="ジャズステーション",
+        description="スムースジャズ、即興演奏、クラシックな雰囲気",
         bpm_min=100,
         bpm_max=140,
         duration=240,
