@@ -9,9 +9,12 @@ import psutil
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from worker.config import settings
 from worker.lyrics_generator import LyricsGenerator
 from worker.models import Channel, Request, Track
+from worker.playlist_generator import generate_weighted_playlist
 from worker.preference_analyzer import analyze_channel_preferences
+from worker.track_retirement import cleanup_excess_tracks
 
 logger = logging.getLogger(__name__)
 
@@ -123,15 +126,39 @@ async def run_auto_generation(session_factory) -> int:
 
     created = 0
     async with session_factory() as session:
-        result = await session.execute(
+        # 全アクティブチャンネルを取得（棚卸しは auto_generate に関係なく実行）
+        all_result = await session.execute(
             select(Channel).where(
                 Channel.is_active == True,  # noqa: E712
-                Channel.auto_generate == True,  # noqa: E712
             )
         )
-        channels = result.scalars().all()
+        all_channels = all_result.scalars().all()
 
-        for channel in channels:
+        # 棚卸し: max_stock超過時に不人気曲を退役+FLAC削除
+        for channel in all_channels:
+            try:
+                retired = await cleanup_excess_tracks(
+                    session,
+                    channel.id,
+                    channel.slug,
+                    channel.max_stock,
+                    settings.generated_tracks_dir,
+                )
+                if retired > 0:
+                    await generate_weighted_playlist(
+                        session, channel.id, channel.slug,
+                        settings.generated_tracks_dir,
+                    )
+            except Exception:
+                logger.exception(
+                    "channel=%s: 棚卸し処理失敗", channel.slug,
+                )
+
+        # 自動生成: auto_generate が有効なチャンネルのみ
+        for channel in all_channels:
+            if not channel.auto_generate:
+                continue
+
             pending = await get_pending_request_count(session, channel.id)
             if pending > 0:
                 logger.debug(
