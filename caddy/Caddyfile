@@ -1,0 +1,18 @@
+:3200 {
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /internal/* {
+		respond 404
+	}
+
+	handle /stream/* {
+		uri strip_prefix /stream
+		reverse_proxy icecast:8000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}

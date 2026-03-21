@@ -1,0 +1,159 @@
+name: product-ai-music-station
+
+services:
+  # --- Database ---
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ai_music_station
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d ai_music_station"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # --- Database Migrations ---
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${DB_USER:-app}:${DB_PASSWORD}@postgres:5432/ai_music_station"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # --- Backend API ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${DB_USER:-app}:${DB_PASSWORD}@postgres:5432/ai_music_station"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # --- Icecast2 Streaming Server ---
+  icecast:
+    build:
+      context: ./streaming
+      dockerfile: Dockerfile.icecast
+    environment:
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD:?required}
+      ICECAST_ADMIN_PASSWORD: ${ICECAST_ADMIN_PASSWORD:?required}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8000/status-json.xsl || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Liquidsoap per channel ---
+  liquidsoap-lofi:
+    build:
+      context: ./streaming/liquidsoap
+    environment:
+      CHANNEL: lofi
+      ICECAST_HOST: icecast
+      ICECAST_PORT: "8000"
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      API_BASE_URL: http://api:8000
+    volumes:
+      - ./generated_tracks:/tracks:ro
+    depends_on:
+      icecast:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/liquidsoap_healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  liquidsoap-anime:
+    build:
+      context: ./streaming/liquidsoap
+    environment:
+      CHANNEL: anime
+      ICECAST_HOST: icecast
+      ICECAST_PORT: "8000"
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      API_BASE_URL: http://api:8000
+    volumes:
+      - ./generated_tracks:/tracks:ro
+    depends_on:
+      icecast:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/liquidsoap_healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  liquidsoap-jazz:
+    build:
+      context: ./streaming/liquidsoap
+    environment:
+      CHANNEL: jazz
+      ICECAST_HOST: icecast
+      ICECAST_PORT: "8000"
+      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
+      API_BASE_URL: http://api:8000
+    volumes:
+      - ./generated_tracks:/tracks:ro
+    depends_on:
+      icecast:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/liquidsoap_healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Frontend ---
+  frontend:
+    build:
+      context: ./frontend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Reverse Proxy ---
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${FRONTEND_PORT:-3200}:3200"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      icecast:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3200/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:
