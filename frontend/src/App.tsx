@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChannelSelector } from "./components/ChannelSelector";
+import { LyricsDisplay } from "./components/LyricsDisplay";
 import { NowPlaying } from "./components/NowPlaying";
 import { Player } from "./components/Player";
 import { RequestForm } from "./components/RequestForm";
 import { TrackHistory } from "./components/TrackHistory";
+import { TrackTitle } from "./components/TrackTitle";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
 
@@ -14,6 +16,30 @@ export default function App() {
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
+
+  // Track elapsed playback time for lyrics sync
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const trackIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!nowPlaying) {
+      setElapsedMs(0);
+      trackIdRef.current = null;
+      return;
+    }
+
+    // Reset elapsed when track changes
+    if (trackIdRef.current !== nowPlaying.id) {
+      trackIdRef.current = nowPlaying.id;
+      setElapsedMs(0);
+    }
+
+    const id = setInterval(() => {
+      setElapsedMs((prev) => prev + 500);
+    }, 500);
+
+    return () => clearInterval(id);
+  }, [nowPlaying]);
 
   if (loading) {
     return (
@@ -55,6 +81,14 @@ export default function App() {
         {activeSlug && (
           <>
             <NowPlaying track={nowPlaying} />
+            {nowPlaying && <TrackTitle track={nowPlaying} />}
+            {nowPlaying?.lyrics && (
+              <LyricsDisplay
+                lyrics={nowPlaying.lyrics}
+                elapsedMs={elapsedMs}
+                durationMs={nowPlaying.duration_ms ?? 0}
+              />
+            )}
             <RequestForm channelSlug={activeSlug} />
             <TrackHistory channelSlug={activeSlug} />
           </>

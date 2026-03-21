@@ -30,6 +30,7 @@ export interface ChannelListResponse {
 export interface CreateRequestBody {
   caption?: string;
   lyrics?: string;
+  mood?: string;
   bpm?: number;
   duration?: number;
   music_key?: string;
@@ -46,6 +47,9 @@ export interface RequestResponse {
 export interface Track {
   id: string;
   caption: string;
+  title?: string;
+  mood?: string;
+  lyrics?: string;
   duration_ms: number | null;
   bpm: number | null;
   music_key: string | null;
