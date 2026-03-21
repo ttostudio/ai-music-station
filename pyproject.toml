@@ -1,0 +1,21 @@
+[project]
+name = "ai-music-station"
+version = "0.1.0"
+description = "ACE-Step v1.5 powered music generation and streaming service"
+requires-python = ">=3.11,<3.13"
+license = "MIT"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests that require Docker services",
+    "e2e: marks end-to-end tests",
+]
