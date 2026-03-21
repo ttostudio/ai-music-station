@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -104,7 +105,7 @@ class NowPlayingResponse(BaseModel):
 
 class ReactionBody(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=100)
-    reaction_type: str = Field("like", max_length=20)
+    reaction_type: Literal["like"] = "like"
 
 
 class ReactionResponse(BaseModel):
