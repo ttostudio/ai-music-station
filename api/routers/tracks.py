@@ -23,7 +23,7 @@ async def list_tracks(
     )
     channel = result.scalar_one_or_none()
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
 
     query = (
         select(Track)
@@ -69,7 +69,7 @@ async def now_playing(
     )
     channel = result.scalar_one_or_none()
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
 
     np_result = await session.execute(
         select(NowPlaying).where(NowPlaying.channel_id == channel.id)

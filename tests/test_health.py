@@ -23,8 +23,8 @@ def test_health_endpoint():
     response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "healthy"
-    assert data["database"] == "connected"
+    assert data["status"] == "正常"
+    assert data["database"] == "接続済み"
     assert data["channels_active"] == 3
 
     app.dependency_overrides.clear()

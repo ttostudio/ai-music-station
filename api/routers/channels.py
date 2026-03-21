@@ -81,7 +81,7 @@ async def get_channel(
     )
     channel = result.scalar_one_or_none()
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
 
     base = await _channel_to_response(session, channel)
     return ChannelDetailResponse(

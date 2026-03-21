@@ -1,11 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# AI Music Station - Host worker setup for Apple Silicon
-# This script sets up the ACE-Step worker on the Mac mini host.
-# The worker runs outside Docker for MPS/MLX GPU access.
+# AI Music Station - Apple Silicon ホスト用ワーカーセットアップ
+# MPS/MLX GPU アクセスのため、Docker 外で実行
 
-echo "=== AI Music Station Worker Setup ==="
+echo "=== AI Music Station ワーカーセットアップ ==="
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -13,58 +12,59 @@ ACESTEP_DIR="${HOME}/ace-step"
 
 cd "$PROJECT_DIR"
 
-# 1. Check Python version
-echo "Checking Python..."
-python3 --version
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-echo "  Python ${PYTHON_VERSION}"
-
-# 2. Check for uv
+# 1. uv の確認・インストール
 if ! command -v uv &> /dev/null; then
-    echo "Installing uv package manager..."
+    echo "uv パッケージマネージャーをインストール中..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 echo "  uv: $(uv --version)"
 
-# 3. Clone ACE-Step if not present
+# 2. Python 3.12 の仮想環境を作成
+echo "Python 3.12 仮想環境を作成中..."
+uv venv --python 3.12 .venv
+source .venv/bin/activate
+echo "  Python: $(python --version)"
+
+# 3. ワーカー依存パッケージのインストール
+echo "ワーカー依存パッケージをインストール中..."
+uv pip install -r requirements.txt
+
+# 4. ACE-Step のクローン
 if [ ! -d "$ACESTEP_DIR" ]; then
-    echo "Cloning ACE-Step v1.5..."
+    echo "ACE-Step v1.5 をクローン中..."
     git clone https://github.com/ace-step/ACE-Step-1.5.git "$ACESTEP_DIR"
 else
-    echo "  ACE-Step found at ${ACESTEP_DIR}"
+    echo "  ACE-Step: ${ACESTEP_DIR} に存在"
 fi
 
-# 4. Install ACE-Step dependencies
-echo "Installing ACE-Step dependencies..."
+# 5. ACE-Step 依存パッケージのインストール
+echo "ACE-Step 依存パッケージをインストール中..."
 cd "$ACESTEP_DIR"
 uv sync
 
-# 5. Download models (if not already present)
-echo "Downloading ACE-Step models (this may take a while on first run)..."
-uv run acestep-download || echo "  Model download skipped (may already exist)"
+# 6. モデルのダウンロード
+echo "ACE-Step モデルをダウンロード中（初回は時間がかかります）..."
+uv run acestep-download || echo "  モデルダウンロードをスキップ（既に存在する可能性あり）"
 
-# 6. Install worker dependencies
-echo "Installing worker dependencies..."
+# 7. generated_tracks ディレクトリの作成
 cd "$PROJECT_DIR"
-pip3 install -r requirements.txt
-
-# 7. Create generated_tracks directory
 mkdir -p generated_tracks/lofi generated_tracks/anime generated_tracks/jazz
 
-# 8. Create .env if not exists
+# 8. .env の作成
 if [ ! -f .env ]; then
     cp .env.example .env
-    echo "  Created .env from .env.example — edit it with your passwords"
+    echo "  .env.example から .env を作成しました — パスワードを編集してください"
 fi
 
 echo ""
-echo "=== Setup Complete ==="
+echo "=== セットアップ完了 ==="
 echo ""
-echo "To start the ACE-Step API server:"
+echo "ACE-Step API サーバーの起動:"
 echo "  cd ${ACESTEP_DIR} && uv run acestep-api"
 echo ""
-echo "To start the worker:"
-echo "  cd ${PROJECT_DIR} && python3 -m worker"
+echo "ワーカーの起動:"
+echo "  cd ${PROJECT_DIR} && source .venv/bin/activate && python -m worker"
 echo ""
-echo "To start the Docker services:"
+echo "Docker サービスの起動:"
 echo "  cd ${PROJECT_DIR} && docker compose up -d"

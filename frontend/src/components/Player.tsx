@@ -46,7 +46,7 @@ export function Player({ streamUrl, channelName }: Props) {
         onClick={togglePlay}
         disabled={!streamUrl}
         className="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 flex items-center justify-center transition-colors"
-        aria-label={isPlaying ? "Pause" : "Play"}
+        aria-label={isPlaying ? "一時停止" : "再生"}
       >
         {isPlaying ? (
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -61,8 +61,8 @@ export function Player({ streamUrl, channelName }: Props) {
       </button>
 
       <div className="flex-1">
-        <div className="text-sm text-gray-400">Now streaming</div>
-        <div className="text-lg font-semibold">{channelName || "Select a channel"}</div>
+        <div className="text-sm text-gray-400">ストリーミング中</div>
+        <div className="text-lg font-semibold">{channelName || "チャンネルを選択してください"}</div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export function Player({ streamUrl, channelName }: Props) {
           value={volume}
           onChange={(e) => setVolume(parseFloat(e.target.value))}
           className="w-24 accent-indigo-500"
-          aria-label="Volume"
+          aria-label="音量"
         />
       </div>
     </div>

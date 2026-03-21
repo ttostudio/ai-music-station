@@ -9,8 +9,8 @@ const mockChannels: Channel[] = [
   {
     id: "1",
     slug: "lofi",
-    name: "LoFi Beats",
-    description: "Chill beats",
+    name: "LoFi ビーツ",
+    description: "チルなローファイ",
     is_active: true,
     queue_depth: 2,
     total_tracks: 10,
@@ -20,8 +20,8 @@ const mockChannels: Channel[] = [
   {
     id: "2",
     slug: "jazz",
-    name: "Jazz Station",
-    description: "Smooth jazz",
+    name: "ジャズステーション",
+    description: "スムースジャズ",
     is_active: true,
     queue_depth: 0,
     total_tracks: 5,
@@ -39,8 +39,10 @@ describe("ChannelSelector", () => {
         onSelect={() => {}}
       />,
     );
-    expect(screen.getAllByText("LoFi Beats").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Jazz Station").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("LoFi ビーツ").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("ジャズステーション").length,
+    ).toBeGreaterThan(0);
   });
 
   it("calls onSelect when channel is clicked", () => {
@@ -52,7 +54,7 @@ describe("ChannelSelector", () => {
         onSelect={onSelect}
       />,
     );
-    fireEvent.click(screen.getAllByText("LoFi Beats")[0]);
+    fireEvent.click(screen.getAllByText("LoFi ビーツ")[0]);
     expect(onSelect).toHaveBeenCalledWith("lofi");
   });
 
@@ -64,6 +66,6 @@ describe("ChannelSelector", () => {
         onSelect={() => {}}
       />,
     );
-    expect(screen.getAllByText("(2 queued)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("(2件待ち)").length).toBeGreaterThan(0);
   });
 });

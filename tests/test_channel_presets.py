@@ -15,7 +15,7 @@ class TestChannelPresets:
         preset = get_preset("lofi")
         assert preset is not None
         assert preset.slug == "lofi"
-        assert preset.name == "LoFi Beats"
+        assert preset.name == "LoFi ビーツ"
 
     def test_get_preset_returns_none_for_unknown(self):
         assert get_preset("nonexistent") is None

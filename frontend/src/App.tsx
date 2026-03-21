@@ -18,7 +18,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-gray-400">Loading channels...</div>
+        <div className="text-gray-400">チャンネルを読み込み中...</div>
       </div>
     );
   }
@@ -37,7 +37,7 @@ export default function App() {
         <header className="text-center">
           <h1 className="text-3xl font-bold">AI Music Station</h1>
           <p className="text-gray-400 mt-1">
-            AI-generated music, streaming live
+            AIが生成した音楽をライブ配信
           </p>
         </header>
 
@@ -59,6 +59,10 @@ export default function App() {
             <TrackHistory channelSlug={activeSlug} />
           </>
         )}
+
+        <footer className="text-center text-gray-600 text-xs pt-4">
+          AI Music Station &mdash; ACE-Step v1.5 搭載
+        </footer>
       </div>
     </div>
   );

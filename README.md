@@ -1,89 +1,89 @@
 # AI Music Station
 
-ACE-Step v1.5 powered music generation and streaming service. Request songs by channel (anime, LoFi, jazz) and listen via browser like a radio station.
+ACE-Step v1.5 を搭載した音楽生成＆ストリーミングサービス。チャンネル別（アニソン、LoFi、ジャズ）に楽曲をリクエストし、ラジオのようにブラウザで視聴できます。
 
-## Architecture
+## アーキテクチャ
 
 ```
-Browser → Caddy (:3200) → Frontend (React SPA)
-                        → /api/* → FastAPI (:8000)
-                        → /stream/* → Icecast2 (:8000)
+ブラウザ → Caddy (:3200) → フロントエンド (React SPA)
+                          → /api/* → FastAPI (:8000)
+                          → /stream/* → Icecast2 (:8000)
 
-Icecast2 ← Liquidsoap (1 per channel, reads FLAC from shared volume)
-FastAPI ← PostgreSQL (:5432) ← Worker (host-native Python process)
-Worker → ACE-Step API (:8001, host-native MLX) → FLAC → ./generated_tracks/
+Icecast2 ← Liquidsoap (チャンネル毎に1つ、共有ボリュームからFLACを読み取り)
+FastAPI ← PostgreSQL (:5432) ← ワーカー (ホストネイティブ Python プロセス)
+ワーカー → ACE-Step API (:8001, ホストネイティブ MLX) → FLAC → ./generated_tracks/
 ```
 
-### Services
+### サービス一覧
 
-| Service | Runtime | Description |
-|---------|---------|-------------|
-| `postgres` | Docker | PostgreSQL 16 — queue, metadata, channels |
+| サービス | 実行環境 | 説明 |
+|---------|---------|------|
+| `postgres` | Docker | PostgreSQL 16 — キュー、メタデータ、チャンネル |
 | `api` | Docker | FastAPI — REST API |
-| `icecast` | Docker | Icecast2 — audio streaming |
-| `liquidsoap-{lofi,anime,jazz}` | Docker | Liquidsoap — reads tracks, feeds Icecast |
+| `icecast` | Docker | Icecast2 — オーディオストリーミング |
+| `liquidsoap-{lofi,anime,jazz}` | Docker | Liquidsoap — トラック読み取り、Icecast 配信 |
 | `frontend` | Docker | React SPA (nginx) |
-| `caddy` | Docker | Reverse proxy (port 3200) |
-| `worker` | Host | ACE-Step queue consumer (Apple Silicon) |
+| `caddy` | Docker | リバースプロキシ (ポート 3200) |
+| `worker` | ホスト | ACE-Step キューコンシューマー (Apple Silicon) |
 
-## Quick Start
+## クイックスタート
 
-### 1. Clone and configure
+### 1. クローンと設定
 
 ```bash
 git clone https://github.com/ttostudio/ai-music-station.git
 cd ai-music-station
 cp .env.example .env
-# Edit .env with secure passwords
+# .env を編集してパスワードを設定
 ```
 
-### 2. Start Docker services
+### 2. Docker サービスの起動
 
 ```bash
 docker compose up -d
 ```
 
-This starts PostgreSQL, runs migrations, seeds channels, starts the API, Icecast2 streaming, Liquidsoap per channel, frontend, and Caddy reverse proxy.
+PostgreSQL、マイグレーション、チャンネルシード、API、Icecast2 ストリーミング、チャンネル毎の Liquidsoap、フロントエンド、Caddy リバースプロキシが起動します。
 
-### 3. Set up the worker (Apple Silicon host)
+### 3. ワーカーのセットアップ（Apple Silicon ホスト）
 
-The music generation worker runs on the host Mac mini for MPS/MLX GPU access:
+音楽生成ワーカーは MPS/MLX GPU アクセスのためホスト Mac mini で実行します：
 
 ```bash
-# Run the setup script
+# セットアップスクリプトの実行（Python 3.12 仮想環境を自動作成）
 ./scripts/setup-worker.sh
 
-# Start ACE-Step API (in a separate terminal)
+# ACE-Step API サーバーの起動（別ターミナルで）
 cd ~/ace-step && uv run acestep-api
 
-# Start the worker
-python3 -m worker
+# ワーカーの起動
+source .venv/bin/activate && python -m worker
 ```
 
-### 4. Open the player
+### 4. プレーヤーを開く
 
-Visit **http://localhost:3200** in your browser.
+ブラウザで **http://localhost:3200** にアクセスしてください。
 
-## Channels
+## チャンネル
 
-| Channel | Style | BPM | Duration |
-|---------|-------|-----|----------|
-| LoFi Beats | Chill lo-fi hip hop | 70-90 | 180s |
-| Anime Songs | J-pop anime themes | 120-160 | 90s |
-| Jazz Station | Smooth jazz | 100-140 | 240s |
+| チャンネル | スタイル | BPM | 長さ |
+|-----------|---------|-----|------|
+| LoFi ビーツ | チルなローファイ・ヒップホップ | 70-90 | 180秒 |
+| アニソン | J-pop アニメテーマ | 120-160 | 90秒 |
+| ジャズステーション | スムースジャズ | 100-140 | 240秒 |
 
-## API Endpoints
+## API エンドポイント
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/channels` | List channels |
-| GET | `/api/channels/{slug}` | Channel detail |
-| POST | `/api/channels/{slug}/requests` | Submit song request |
-| GET | `/api/channels/{slug}/tracks` | List generated tracks |
-| GET | `/api/channels/{slug}/now-playing` | Current track |
+| メソッド | エンドポイント | 説明 |
+|---------|--------------|------|
+| GET | `/api/health` | ヘルスチェック |
+| GET | `/api/channels` | チャンネル一覧 |
+| GET | `/api/channels/{slug}` | チャンネル詳細 |
+| POST | `/api/channels/{slug}/requests` | 楽曲リクエスト送信 |
+| GET | `/api/channels/{slug}/tracks` | 生成済みトラック一覧 |
+| GET | `/api/channels/{slug}/now-playing` | 再生中のトラック |
 
-## Development
+## 開発
 
 ```bash
 # Python
@@ -91,24 +91,24 @@ pip install -r requirements.txt
 ruff check .
 pytest
 
-# Frontend
+# フロントエンド
 cd frontend && npm ci
 npm run lint
 npm test
 
 # Docker
-docker compose config  # validate
+docker compose config  # 検証
 ```
 
-## Tech Stack
+## 技術スタック
 
-- **Music Generation:** ACE-Step v1.5 (Apple Silicon MLX)
-- **Backend:** Python FastAPI + SQLAlchemy + Alembic
-- **Streaming:** Icecast2 + Liquidsoap (OGG Vorbis)
-- **Frontend:** React 19 + Vite + Tailwind CSS
-- **Database:** PostgreSQL 16
-- **Infrastructure:** Docker Compose, Caddy
+- **音楽生成:** ACE-Step v1.5 (Apple Silicon MLX)
+- **バックエンド:** Python FastAPI + SQLAlchemy + Alembic
+- **ストリーミング:** Icecast2 + Liquidsoap (OGG Vorbis)
+- **フロントエンド:** React 19 + Vite + Tailwind CSS
+- **データベース:** PostgreSQL 16
+- **インフラ:** Docker Compose, Caddy
 
-## License
+## ライセンス
 
-MIT — see [LICENSE](LICENSE) for details.
+MIT — 詳細は [LICENSE](LICENSE) を参照してください。
