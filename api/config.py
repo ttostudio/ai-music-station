@@ -9,7 +9,7 @@ class APISettings(BaseSettings):
     )
     debug: bool = False
 
-    model_config = {"env_prefix": "", "env_file": ".env"}
+    model_config = {"env_prefix": "", "env_file": ".env", "extra": "ignore"}
 
 
 settings = APISettings()
