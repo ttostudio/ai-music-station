@@ -29,6 +29,7 @@ class LyricsGenerator:
     async def generate(
         self, mood: str, channel_name: str,
         channel_description: str | None = None,
+        existing_titles: list[str] | None = None,
     ) -> LyricsResult:
         """雰囲気から歌詞・曲名・キャプションを生成する
 
@@ -36,11 +37,12 @@ class LyricsGenerator:
             mood: 楽曲の雰囲気（例: "雨の日の切ない気分"）
             channel_name: チャンネル名
             channel_description: チャンネルの説明
+            existing_titles: 既存の曲タイトル一覧（重複防止用）
 
         Returns:
             LyricsResult: 生成された曲名・キャプション・歌詞
         """
-        prompt = self._build_prompt(mood, channel_name, channel_description)
+        prompt = self._build_prompt(mood, channel_name, channel_description, existing_titles)
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -79,8 +81,9 @@ class LyricsGenerator:
     def _build_prompt(
         self, mood: str, channel_name: str,
         channel_description: str | None,
+        existing_titles: list[str] | None = None,
     ) -> str:
-        return (
+        prompt = (
             "あなたは音楽の作詞家です。"
             "以下の雰囲気に合った楽曲を作成してください。\n\n"
             f"チャンネル: {channel_name}\n"
@@ -96,6 +99,18 @@ class LyricsGenerator:
             '\\n\\n[Verse 2]\\n歌詞...\\n\\n[Chorus]\\n歌詞..."\n'
             "}"
         )
+
+        if existing_titles:
+            titles_text = "\n".join(f"- {t}" for t in existing_titles)
+            prompt += (
+                "\n\n以下のタイトルは既に使われています。"
+                "これらと全く異なるユニークなタイトルをつけてください:\n"
+                f"{titles_text}\n\n"
+                "既存の曲とは異なるテーマ、雰囲気、表現を使って"
+                "新鮮な楽曲を作ってください。"
+            )
+
+        return prompt
 
     def _parse_response(self, text: str) -> LyricsResult:
         """レスポンスからJSON部分を抽出してパースする"""
