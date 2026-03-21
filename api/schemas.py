@@ -122,7 +122,45 @@ class ReactionStatusResponse(BaseModel):
     user_reacted: bool
 
 
-# --- Channel Update ---
+# --- Channel Create / Full Update ---
+
+class ChannelCreateBody(BaseModel):
+    slug: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-z0-9-]+$')
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field("", max_length=500)
+    mood_description: str | None = None
+    default_bpm_min: int = Field(80, ge=30, le=300)
+    default_bpm_max: int = Field(120, ge=30, le=300)
+    default_duration: int = Field(180, ge=10, le=600)
+    default_key: str | None = Field(None, max_length=10)
+    default_instrumental: bool = True
+    prompt_template: str = Field(..., min_length=1)
+    vocal_language: str | None = Field(None, max_length=10)
+    auto_generate: bool = True
+    min_stock: int = Field(5, ge=0, le=100)
+    max_stock: int = Field(50, ge=1, le=500)
+
+
+class ChannelFullResponse(BaseModel):
+    id: uuid.UUID
+    slug: str
+    name: str
+    description: str | None
+    mood_description: str | None
+    is_active: bool
+    default_bpm_min: int
+    default_bpm_max: int
+    default_duration: int
+    default_key: str | None
+    default_instrumental: bool
+    prompt_template: str
+    vocal_language: str | None
+    auto_generate: bool
+    min_stock: int
+    max_stock: int
+
+
+# --- Channel Partial Update ---
 
 class ChannelUpdateBody(BaseModel):
     mood_description: str | None = Field(None, max_length=500)
