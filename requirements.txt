@@ -16,6 +16,9 @@ httpx==0.28.1
 # AI（歌詞・曲名生成）
 anthropic>=0.45.0
 
+# System monitoring
+psutil>=5.9.0
+
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.25.0

@@ -17,6 +17,7 @@ from worker.channel_presets import get_preset
 from worker.config import settings
 from worker.models import Channel, Request, Track
 from worker.playlist_generator import generate_weighted_playlist
+from worker.auto_generator import run_auto_generation
 from worker.track_retirement import retire_unpopular_tracks
 
 logger = logging.getLogger(__name__)
@@ -228,8 +229,10 @@ class QueueConsumer:
         )
         playlist_interval = 5 * 60  # 5分
         retirement_interval = 10 * 60  # 10分
+        auto_gen_interval = 60  # 60秒
         last_playlist_update = 0.0
         last_retirement_run = 0.0
+        last_auto_gen_run = 0.0
 
         while True:
             try:
@@ -250,6 +253,14 @@ class QueueConsumer:
                     except Exception:
                         logger.exception("棚卸しエラー")
                     last_retirement_run = now
+
+                # 自動生成（60秒間隔）
+                if now - last_auto_gen_run >= auto_gen_interval:
+                    try:
+                        await run_auto_generation(self.session_factory)
+                    except Exception:
+                        logger.exception("自動生成エラー")
+                    last_auto_gen_run = now
 
                 had_work = await self.poll_once()
                 if not had_work:

@@ -9,6 +9,7 @@ from api.schemas import (
     ChannelDetailResponse,
     ChannelListResponse,
     ChannelResponse,
+    ChannelUpdateBody,
     NowPlayingInfo,
 )
 from worker.models import Channel, NowPlaying, Request, Track
@@ -82,6 +83,37 @@ async def get_channel(
     channel = result.scalar_one_or_none()
     if not channel:
         raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
+
+    base = await _channel_to_response(session, channel)
+    return ChannelDetailResponse(
+        **base.model_dump(),
+        default_bpm_min=channel.default_bpm_min,
+        default_bpm_max=channel.default_bpm_max,
+        default_duration=channel.default_duration,
+        default_instrumental=channel.default_instrumental,
+    )
+
+
+@router.patch("/{slug}", response_model=ChannelDetailResponse)
+async def update_channel(
+    slug: str,
+    body: ChannelUpdateBody,
+    session: AsyncSession = Depends(get_session),
+) -> ChannelDetailResponse:
+    result = await session.execute(
+        select(Channel).where(Channel.slug == slug)
+    )
+    channel = result.scalar_one_or_none()
+    if not channel:
+        raise HTTPException(
+            status_code=404, detail="チャンネルが見つかりません",
+        )
+
+    updates = body.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(channel, key, value)
+    await session.commit()
+    await session.refresh(channel)
 
     base = await _channel_to_response(session, channel)
     return ChannelDetailResponse(
