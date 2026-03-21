@@ -13,11 +13,11 @@ from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from worker.acestep_client import ACEStepClient, GenerationError, GenerationParams
+from worker.auto_generator import run_auto_generation
 from worker.channel_presets import get_preset
 from worker.config import settings
 from worker.models import Channel, Request, Track
 from worker.playlist_generator import generate_weighted_playlist
-from worker.auto_generator import run_auto_generation
 from worker.track_retirement import retire_unpopular_tracks
 
 logger = logging.getLogger(__name__)
