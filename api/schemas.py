@@ -118,6 +118,15 @@ class ReactionStatusResponse(BaseModel):
     user_reacted: bool
 
 
+# --- Channel Update ---
+
+class ChannelUpdateBody(BaseModel):
+    mood_description: str | None = Field(None, max_length=500)
+    auto_generate: bool | None = None
+    min_stock: int | None = Field(None, ge=1, le=100)
+    max_stock: int | None = Field(None, ge=1, le=500)
+
+
 # --- Health ---
 
 class HealthResponse(BaseModel):
