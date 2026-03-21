@@ -7,20 +7,28 @@ icecast_port = int_of_string(environment.get(default="8000", "ICECAST_PORT"))
 icecast_password = environment.get("ICECAST_SOURCE_PASSWORD")
 
 tracks_dir = "/tracks/#{channel}"
+playlist_file = "/tracks/#{channel}/playlist.m3u"
 silence_file = "/etc/liquidsoap/silence.flac"
 
 # Fallback: silence
 silence = single(silence_file)
 
-# Main playlist: watch the tracks directory for new files
+# 重み付きプレイリスト（worker が生成・更新する playlist.m3u）
 tracks = playlist(
+  mode="normal",
+  reload_mode="watch",
+  playlist_file
+)
+
+# ディレクトリ全体のランダム再生（プレイリスト未生成時のフォールバック）
+dir_tracks = playlist(
   mode="randomize",
   reload_mode="watch",
   tracks_dir
 )
 
-# Crossfade between tracks
-radio = crossfade(tracks)
+# プレイリスト優先、なければディレクトリ再生にフォールバック
+radio = crossfade(fallback(track_sensitive=true, [tracks, dir_tracks]))
 
 # Use silence as fallback when no tracks exist
 radio = fallback(track_sensitive=true, [radio, silence])

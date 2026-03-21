@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import get_session
 from api.schemas import NowPlayingUpdate, WorkerHeartbeat
-from worker.models import Channel, NowPlaying
+from worker.models import Channel, NowPlaying, Track
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -25,7 +25,14 @@ async def update_now_playing(
     if not channel:
         return {"ok": False, "error": "チャンネルが見つかりません"}
 
+    # 前のトラックの play_count をインクリメント
     np = await session.get(NowPlaying, channel.id)
+    if np and np.track_id and np.track_id != body.track_id:
+        prev_track = await session.get(Track, np.track_id)
+        if prev_track:
+            prev_track.play_count += 1
+            prev_track.last_played_at = datetime.now(timezone.utc)
+
     if np:
         np.track_id = body.track_id
         np.started_at = datetime.now(timezone.utc)

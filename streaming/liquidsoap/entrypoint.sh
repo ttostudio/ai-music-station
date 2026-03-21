@@ -9,6 +9,12 @@ ICECAST_SOURCE_PASSWORD="${ICECAST_SOURCE_PASSWORD:?ICECAST_SOURCE_PASSWORD is r
 # Create track directory if it doesn't exist
 mkdir -p "/tracks/${CHANNEL}"
 
+# playlist.m3u がなければ空ファイルを作成（liquidsoap 起動時エラー防止）
+PLAYLIST_FILE="/tracks/${CHANNEL}/playlist.m3u"
+if [ ! -f "${PLAYLIST_FILE}" ]; then
+    touch "${PLAYLIST_FILE}"
+fi
+
 # Touch health file
 touch /tmp/liquidsoap_healthy
 
