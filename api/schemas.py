@@ -39,6 +39,7 @@ class ChannelListResponse(BaseModel):
 # --- Request ---
 
 class CreateRequestBody(BaseModel):
+    mood: str | None = Field(None, max_length=500)
     caption: str | None = Field(None, max_length=1000)
     lyrics: str | None = Field(None, max_length=5000)
     bpm: int | None = Field(None, ge=30, le=300)
@@ -58,6 +59,7 @@ class RequestDetailResponse(BaseModel):
     id: uuid.UUID
     channel_slug: str
     status: str
+    mood: str | None = None
     caption: str | None = None
     lyrics: str | None = None
     bpm: int | None = None
@@ -96,6 +98,23 @@ class TrackListResponse(BaseModel):
 
 class NowPlayingResponse(BaseModel):
     track: TrackResponse | None = None
+
+
+# --- Reaction ---
+
+class ReactionBody(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=100)
+    reaction_type: str = Field("like", max_length=20)
+
+
+class ReactionResponse(BaseModel):
+    ok: bool
+    count: int
+
+
+class ReactionStatusResponse(BaseModel):
+    count: int
+    user_reacted: bool
 
 
 # --- Health ---
