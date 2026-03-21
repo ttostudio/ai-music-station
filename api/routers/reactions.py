@@ -34,11 +34,15 @@ async def add_reaction(
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=409, detail="既にリアクション済みです") from None
+        raise HTTPException(
+            status_code=409, detail="すでにリアクション済みです"
+        ) from None
 
     # like_count をアトミックに更新
     await session.execute(
-        update(Track).where(Track.id == track.id).values(like_count=Track.like_count + 1)
+        update(Track)
+        .where(Track.id == track.id)
+        .values(like_count=Track.like_count + 1)
     )
     await session.commit()
     await session.refresh(track)

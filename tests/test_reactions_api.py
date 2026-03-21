@@ -146,7 +146,9 @@ class TestRemoveReaction:
 
 
 class TestGetReactionStatus:
-    def test_returns_status_with_user_reacted(self, test_client, mock_session, sample_track):
+    def test_returns_status_with_user_reacted(
+        self, test_client, mock_session, sample_track,
+    ):
         sample_track.like_count = 3
         mock_session.get = AsyncMock(return_value=sample_track)
 
@@ -162,7 +164,9 @@ class TestGetReactionStatus:
         assert data["count"] == 3
         assert data["user_reacted"] is True
 
-    def test_returns_status_without_user_reacted(self, test_client, mock_session, sample_track):
+    def test_returns_status_without_user_reacted(
+        self, test_client, mock_session, sample_track,
+    ):
         sample_track.like_count = 5
         mock_session.get = AsyncMock(return_value=sample_track)
 
