@@ -367,17 +367,32 @@ CREATE INDEX idx_reactions_track ON reactions(track_id);
 
 ---
 
-## 実装順序
+## 実装状況
 
-| PR | Issue | 内容 | 依存 |
+Phase 1 全機能の実装が完了。全119テスト（Python 104 + Frontend 15）がパス。
+
+| PR | Issue | 内容 | 状態 |
 |----|-------|------|------|
-| 1 | #22 | DBスキーマ拡張（Migration 003） | なし |
-| 2 | #23 | 歌詞・曲名自動生成（Claude API統合） | #22 |
-| 3 | #24 | 楽曲情報表示（曲名・歌詞表示UI） | #22 |
-| 4 | #25 | フィードバックシステム（API + UI） | #22 |
-| 5 | #26 | チャンネル自動生成ジョブ | #22, #23 |
-| 6 | #27 | ラジオ再生改善（棚卸し + 重み付きシャッフル） | #22, #25 |
-| 7 | #28 | 結合テスト + ドキュメント更新 | #22-#27 |
+| #29 | #22 | DBスキーマ拡張（Migration 003） | ✅ マージ済み |
+| #30 | #23 | 歌詞・曲名自動生成（Claude API統合） | ✅ マージ済み |
+| #31 | #24 | 楽曲情報表示（曲名・歌詞表示UI） | ✅ マージ済み |
+| #33 | #25 | フィードバックシステム（リアクションUI） | ✅ マージ済み |
+| #40 | #25 | フィードバックシステム（リアクションAPI修正） | ✅ マージ済み |
+| #32 | #26 | チャンネル自動生成ジョブ | ✅ マージ済み |
+| #35 | #27 | ラジオ再生改善（棚卸し + 重み付きシャッフル） | ✅ マージ済み |
+| #36 | — | play_count アトミック更新修正 | ✅ マージ済み |
+| #38 | — | CI修正（Literal["like"] 型バリデーション） | ✅ マージ済み |
+
+### 実装済み機能サマリー
+
+| # | 機能 | 実装ファイル |
+|---|------|------------|
+| F1 | 歌詞・曲名の自動生成 | `worker/lyrics_generator.py`, `api/routers/requests.py` |
+| F2 | 楽曲情報表示 | `frontend/src/components/LyricsDisplay.jsx`, `frontend/src/components/TrackTitle.jsx` |
+| F3 | フィードバックシステム | `api/routers/reactions.py`, `frontend/src/components/ReactionButton.jsx` |
+| F4 | チャンネル自動生成 | `worker/auto_generator.py`, `worker/queue_consumer.py` |
+| F5 | ラジオ再生改善 | `worker/track_retirement.py`, `worker/playlist_generator.py`, `streaming/liquidsoap/channel.liq` |
+| F6 | ANTHROPIC_API_KEY管理 | `.env.example`, `worker/config.py` |
 
 ---
 
