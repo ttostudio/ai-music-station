@@ -81,7 +81,7 @@ async def create_auto_request(
         mood = f"{mood} ({profile.prompt_hint})"
 
     generator = LyricsGenerator()
-    lyrics_result = generator.generate(
+    lyrics_result = await generator.generate(
         mood=mood,
         channel_name=channel.name,
         channel_description=channel.description,

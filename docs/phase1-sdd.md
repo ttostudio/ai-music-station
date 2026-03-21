@@ -9,12 +9,12 @@
 
 | # | 機能 | 概要 |
 |---|------|------|
-| F1 | 歌詞・曲名の自動生成 | 雰囲気 → Claude API で歌詞/曲名生成 → ACE-Step でボーカル付き生成 |
+| F1 | 歌詞・曲名の自動生成 | 雰囲気 → claude CLI（ローカル） で歌詞/曲名生成 → ACE-Step でボーカル付き生成 |
 | F2 | 楽曲情報表示 | 再生中の曲名・歌詞をWebで表示（カラオケ風スクロール） |
 | F3 | フィードバックシステム | 👍スタンプ → 好み分析 → 次回生成に反映 |
 | F4 | チャンネル自動生成 | 雰囲気設定 + システムリソース監視 + バックグラウンド自動生成 |
 | F5 | ラジオ再生改善 | 不人気曲の棚卸し + 👍重み付きシャッフル |
-| F6 | ANTHROPIC_API_KEY管理 | サーバーサイド環境変数のみ、フロント不要 |
+| F6 | claude CLI設定管理 | ローカルclaude CLIコマンド設定 |
 
 ## アーキテクチャ
 
@@ -22,7 +22,7 @@
 ユーザー → Web UI (React)
   ↓ POST /api/channels/{slug}/requests { mood: "アップテンポなアニソン" }
   ↓
-FastAPI → Claude API（歌詞・曲名生成）
+FastAPI → claude CLI（ローカル）（歌詞・曲名生成）
   ↓ { title, lyrics, caption }
   ↓ INSERT requests + track_metadata
   ↓
@@ -41,11 +41,11 @@ Web UI ← 曲名・歌詞・👍ボタン表示
 
 ### 設計方針
 - リクエスト時に `mood`（雰囲気）パラメータを追加
-- `mood` が指定された場合、API側で Claude API を呼び出し歌詞と曲名を生成
+- `mood` が指定された場合、API側で claude CLI（ローカル） を呼び出し歌詞と曲名を生成
 - 生成結果を `requests` テーブルに保存し、Worker に渡す
-- `caption` と `lyrics` を直接指定した場合は Claude API をスキップ
+- `caption` と `lyrics` を直接指定した場合は claude CLI（ローカル） をスキップ
 
-### Claude API プロンプト設計
+### claude CLI（ローカル） プロンプト設計
 
 ```
 あなたは音楽の作詞家です。以下の雰囲気に合った楽曲を作成してください。
@@ -65,11 +65,11 @@ Web UI ← 曲名・歌詞・👍ボタン表示
 
 ```python
 class LyricsGenerator:
-    def __init__(self, api_key: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self, claude_command: str = "claude"):
+        self.claude_command = claude_command
 
     async def generate(self, mood: str, channel: Channel) -> LyricsResult:
-        # Claude API呼び出し
+        # claude CLI サブプロセス呼び出し
         # → LyricsResult(title, caption, lyrics)
 ```
 
@@ -97,7 +97,7 @@ ALTER TABLE tracks ADD COLUMN mood TEXT;
 ### 環境変数
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...  # サーバーサイドのみ
+CLAUDE_COMMAND=claude  # claude CLIのパス（デフォルト: claude）
 ```
 
 ---
@@ -237,7 +237,7 @@ class AutoGenerator:
         return cpu < 80 and mem < 85
 ```
 
-- 自動生成は `mood_description` を使って Claude API で歌詞生成
+- 自動生成は `mood_description` を使って claude CLI（ローカル） で歌詞生成
 - Worker のポーリングループに統合（60秒間隔でストック確認）
 
 ---
@@ -297,13 +297,12 @@ tracks = playlist(
 
 ---
 
-## F6: ANTHROPIC_API_KEY 管理
+## F6: claude CLI 設定管理
 
-- `.env.example` に `ANTHROPIC_API_KEY=` を追加
-- Worker の `config.py` に `anthropic_api_key` フィールド追加
-- API側では `ANTHROPIC_API_KEY` 環境変数から読み取り
-- フロントエンドには一切送信しない
-- Claude API 呼び出しはサーバーサイド（API or Worker）のみ
+- `.env.example` に `CLAUDE_COMMAND=claude` を追加（オプション）
+- Worker / API の `config.py` に `claude_command` フィールド追加
+- ローカルの `claude` コマンド（Claude Code CLI）をサブプロセスとして呼び出し
+- API キー不要（ローカル認証済みの claude CLI を使用）
 
 ---
 
@@ -374,7 +373,7 @@ Phase 1 全機能の実装が完了。全119テスト（Python 104 + Frontend 15
 | PR | Issue | 内容 | 状態 |
 |----|-------|------|------|
 | #29 | #22 | DBスキーマ拡張（Migration 003） | ✅ マージ済み |
-| #30 | #23 | 歌詞・曲名自動生成（Claude API統合） | ✅ マージ済み |
+| #30 | #23 | 歌詞・曲名自動生成（claude CLI（ローカル）統合） | ✅ マージ済み |
 | #31 | #24 | 楽曲情報表示（曲名・歌詞表示UI） | ✅ マージ済み |
 | #33 | #25 | フィードバックシステム（リアクションUI） | ✅ マージ済み |
 | #40 | #25 | フィードバックシステム（リアクションAPI修正） | ✅ マージ済み |
@@ -392,14 +391,14 @@ Phase 1 全機能の実装が完了。全119テスト（Python 104 + Frontend 15
 | F3 | フィードバックシステム | `api/routers/reactions.py`, `frontend/src/components/ReactionButton.jsx` |
 | F4 | チャンネル自動生成 | `worker/auto_generator.py`, `worker/queue_consumer.py` |
 | F5 | ラジオ再生改善 | `worker/track_retirement.py`, `worker/playlist_generator.py`, `streaming/liquidsoap/channel.liq` |
-| F6 | ANTHROPIC_API_KEY管理 | `.env.example`, `worker/config.py` |
+| F6 | claude CLI設定管理 | `.env.example`, `worker/config.py` |
 
 ---
 
 ## テスト方針
 
 - 各PRで単体テスト必須
-- Claude API呼び出しはモック（httpx mock）
+- claude CLI（ローカル）呼び出しはモック（httpx mock）
 - DB操作は実際のPostgreSQL（テスト用DB）
 - フロントエンドはVitest + React Testing Library
 - 結合テスト: docker compose up → API経由で mood リクエスト → トラック生成確認

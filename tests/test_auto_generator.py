@@ -80,9 +80,9 @@ async def test_create_auto_request_with_mood(mock_analyze, mock_gen_cls):
         prompt_hint="listener-preferred elements: jazz",
     )
     mock_gen = MagicMock()
-    mock_gen.generate.return_value = LyricsResult(
+    mock_gen.generate = AsyncMock(return_value=LyricsResult(
         title="テスト曲", caption="jazz piano", lyrics="[Verse]\ntest",
-    )
+    ))
     mock_gen_cls.return_value = mock_gen
 
     channel = MagicMock()

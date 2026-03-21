@@ -4,7 +4,7 @@ ACE-Step v1.5 を搭載した音楽生成＆ストリーミングサービス。
 
 ## 主な機能
 
-- **AI楽曲生成**: 雰囲気を伝えるだけで歌詞・曲名・ボーカル付き楽曲を自動生成（Claude API + ACE-Step）
+- **AI楽曲生成**: 雰囲気を伝えるだけで歌詞・曲名・ボーカル付き楽曲を自動生成（claude CLI + ACE-Step）
 - **ラジオストリーミング**: チャンネル別に24時間配信（Icecast2 + Liquidsoap）
 - **楽曲情報表示**: 再生中の曲名・歌詞をリアルタイム表示
 - **フィードバック**: 👍リアクションでお気に入りを記録、重み付きシャッフルで人気曲を優先再生
@@ -20,7 +20,7 @@ ACE-Step v1.5 を搭載した音楽生成＆ストリーミングサービス。
 Icecast2 ← Liquidsoap (チャンネル毎に1つ、playlist.m3u から再生)
 FastAPI ← PostgreSQL (:5432) ← ワーカー (ホストネイティブ Python プロセス)
 ワーカー → ACE-Step API (:8001, ホストネイティブ MLX) → FLAC → ./generated_tracks/
-        → Claude API（歌詞・曲名生成）
+        → claude CLI（歌詞・曲名生成、ローカル）
         → プレイリスト生成（5分間隔）/ 棚卸し（10分間隔）/ 自動生成（60秒間隔）
 ```
 
@@ -44,7 +44,7 @@ FastAPI ← PostgreSQL (:5432) ← ワーカー (ホストネイティブ Python
 git clone https://github.com/ttostudio/ai-music-station.git
 cd ai-music-station
 cp .env.example .env
-# .env を編集してパスワードと ANTHROPIC_API_KEY を設定
+# .env を編集してパスワードを設定（claude CLIがインストール済みであること）
 ```
 
 ### 2. Docker サービスの起動
@@ -123,7 +123,7 @@ docker compose config  # 検証
 | `test_api_requests.py` | リクエストAPI |
 | `test_api_tracks.py` | トラックAPI |
 | `test_reactions_api.py` | リアクションAPI（重複409、無効型422含む） |
-| `test_lyrics_generator.py` | Claude API歌詞生成 |
+| `test_lyrics_generator.py` | claude CLI歌詞生成 |
 | `test_auto_generator.py` | チャンネル自動生成ジョブ |
 | `test_queue_consumer.py` | キューコンシューマー |
 | `test_track_retirement.py` | 不人気トラック棚卸し |
@@ -133,7 +133,7 @@ docker compose config  # 検証
 ## 技術スタック
 
 - **音楽生成:** ACE-Step v1.5 (Apple Silicon MLX)
-- **歌詞生成:** Claude API (Anthropic)
+- **歌詞生成:** claude CLI（ローカル Claude Code）
 - **バックエンド:** Python FastAPI + SQLAlchemy + Alembic
 - **ストリーミング:** Icecast2 + Liquidsoap (OGG Vorbis)
 - **フロントエンド:** React 19 + Vite + Tailwind CSS

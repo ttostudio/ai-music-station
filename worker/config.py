@@ -12,7 +12,7 @@ class WorkerSettings(BaseSettings):
     heartbeat_interval: float = 30.0  # seconds
     generated_tracks_dir: str = "./generated_tracks"
     worker_id: str = ""
-    anthropic_api_key: str = ""
+    claude_command: str = "claude"
 
     model_config = {"env_prefix": "", "env_file": ".env", "extra": "ignore"}
 
