@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import get_session
@@ -25,13 +25,17 @@ async def update_now_playing(
     if not channel:
         return {"ok": False, "error": "チャンネルが見つかりません"}
 
-    # 前のトラックの play_count をインクリメント
+    # 前のトラックの play_count をアトミックにインクリメント
     np = await session.get(NowPlaying, channel.id)
     if np and np.track_id and np.track_id != body.track_id:
-        prev_track = await session.get(Track, np.track_id)
-        if prev_track:
-            prev_track.play_count += 1
-            prev_track.last_played_at = datetime.now(timezone.utc)
+        await session.execute(
+            update(Track)
+            .where(Track.id == np.track_id)
+            .values(
+                play_count=Track.play_count + 1,
+                last_played_at=datetime.now(timezone.utc),
+            )
+        )
 
     if np:
         np.track_id = body.track_id
