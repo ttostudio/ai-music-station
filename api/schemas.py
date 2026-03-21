@@ -83,12 +83,16 @@ class RequestListResponse(BaseModel):
 
 class TrackResponse(BaseModel):
     id: uuid.UUID
+    title: str | None = None
     caption: str
+    mood: str | None = None
+    lyrics: str | None = None
     duration_ms: int | None = None
     bpm: int | None = None
     music_key: str | None = None
     instrumental: bool | None = None
     play_count: int = 0
+    like_count: int = 0
     created_at: datetime
 
 

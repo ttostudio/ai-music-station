@@ -87,12 +87,16 @@ async def create_auto_request(
         channel_description=channel.description,
     )
 
+    caption = lyrics_result.caption
+    if lyrics_result.title:
+        caption = f"{lyrics_result.title} | {caption}"
+
     request = Request(
         id=uuid.uuid4(),
         channel_id=channel.id,
         status="pending",
         mood=mood,
-        caption=lyrics_result.caption,
+        caption=caption,
         lyrics=lyrics_result.lyrics if not channel.default_instrumental else None,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
