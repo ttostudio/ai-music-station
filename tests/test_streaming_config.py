@@ -46,35 +46,44 @@ class TestIcecastConfig:
 
 
 class TestLiquidsoapConfig:
-    def test_channel_liq_exists(self):
-        assert (LIQUIDSOAP_DIR / "channel.liq").exists()
+    """統合Liquidsoapの設定テスト（動的生成方式）"""
 
-    def test_channel_liq_references_icecast(self):
-        content = (LIQUIDSOAP_DIR / "channel.liq").read_text()
+    def test_no_static_channel_liq(self):
+        """channel.liq は動的生成に置換されたため存在しないこと"""
+        assert not (LIQUIDSOAP_DIR / "channel.liq").exists()
+
+    def test_entrypoint_generates_dynamic_config(self):
+        """entrypoint.sh がAPIからチャンネル取得→動的設定生成すること"""
+        content = (LIQUIDSOAP_DIR / "entrypoint.sh").read_text()
+        assert "API_BASE_URL" in content
+        assert "/api/channels" in content
+        assert "radio.liq" in content
+
+    def test_entrypoint_has_icecast_output(self):
+        """entrypoint.sh の動的生成にicecast出力設定が含まれること"""
+        content = (LIQUIDSOAP_DIR / "entrypoint.sh").read_text()
         assert "output.icecast" in content
         assert "ICECAST_SOURCE_PASSWORD" in content
 
-    def test_channel_liq_uses_channel_env(self):
-        content = (LIQUIDSOAP_DIR / "channel.liq").read_text()
-        assert 'environment.get("CHANNEL")' in content
-
-    def test_channel_liq_has_fallback(self):
-        content = (LIQUIDSOAP_DIR / "channel.liq").read_text()
+    def test_entrypoint_has_fallback_and_crossfade(self):
+        """entrypoint.sh の動的生成にfallbackとcrossfadeが含まれること"""
+        content = (LIQUIDSOAP_DIR / "entrypoint.sh").read_text()
         assert "fallback" in content
+        assert "crossfade" in content
         assert "silence" in content
 
-    def test_channel_liq_has_crossfade(self):
-        content = (LIQUIDSOAP_DIR / "channel.liq").read_text()
-        assert "crossfade" in content
+    def test_entrypoint_converts_hyphen_to_underscore(self):
+        """slug中のハイフンをアンダースコアに変換すること"""
+        content = (LIQUIDSOAP_DIR / "entrypoint.sh").read_text()
+        assert "tr '-' '_'" in content
 
     def test_silence_wav_exists(self):
         assert (LIQUIDSOAP_DIR / "silence.wav").exists()
 
-    def test_entrypoint_exists_and_executable_content(self):
+    def test_entrypoint_exists_and_has_liquidsoap(self):
         entrypoint = LIQUIDSOAP_DIR / "entrypoint.sh"
         assert entrypoint.exists()
         content = entrypoint.read_text()
-        assert "CHANNEL" in content
         assert "liquidsoap" in content
 
 
@@ -89,7 +98,11 @@ class TestDockerfiles:
         content = (STREAMING_DIR / "Dockerfile.icecast").read_text()
         assert "EXPOSE 8000" in content
 
-    def test_liquidsoap_dockerfile_copies_config(self):
+    def test_liquidsoap_dockerfile_has_entrypoint(self):
         content = (LIQUIDSOAP_DIR / "Dockerfile").read_text()
-        assert "channel.liq" in content
         assert "entrypoint.sh" in content
+
+    def test_liquidsoap_dockerfile_installs_python3(self):
+        """動的チャンネル取得にpython3が必要"""
+        content = (LIQUIDSOAP_DIR / "Dockerfile").read_text()
+        assert "python3" in content
