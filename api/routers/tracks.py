@@ -45,12 +45,16 @@ async def list_tracks(
     items = [
         TrackResponse(
             id=t.id,
+            title=t.title,
             caption=t.caption,
+            mood=t.mood,
+            lyrics=t.lyrics,
             duration_ms=t.duration_ms,
             bpm=t.bpm,
             music_key=t.music_key,
             instrumental=t.instrumental,
             play_count=t.play_count,
+            like_count=t.like_count,
             created_at=t.created_at,
         )
         for t in tracks
@@ -85,12 +89,16 @@ async def now_playing(
     return NowPlayingResponse(
         track=TrackResponse(
             id=track.id,
+            title=track.title,
             caption=track.caption,
+            mood=track.mood,
+            lyrics=track.lyrics,
             duration_ms=track.duration_ms,
             bpm=track.bpm,
             music_key=track.music_key,
             instrumental=track.instrumental,
             play_count=track.play_count,
+            like_count=track.like_count,
             created_at=track.created_at,
         ),
     )

@@ -55,6 +55,7 @@ export interface Track {
   music_key: string | null;
   instrumental: boolean | null;
   play_count: number;
+  like_count: number;
   created_at: string;
 }
 

@@ -56,7 +56,10 @@ async def create_request(
                 channel_name=channel.name,
                 channel_description=channel.description,
             )
+            generated_title = gen_result.title
             caption = caption or gen_result.caption
+            if generated_title:
+                caption = f"{generated_title} | {caption}"
             lyrics = lyrics or gen_result.lyrics
         except Exception:
             logger.warning(

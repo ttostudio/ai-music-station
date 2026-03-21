@@ -23,6 +23,14 @@ from worker.track_retirement import retire_unpopular_tracks
 logger = logging.getLogger(__name__)
 
 
+def _split_title_caption(caption: str | None) -> tuple[str | None, str | None]:
+    """キャプションからタイトルを分離する（'title | caption' 形式）"""
+    if caption and " | " in caption:
+        title, rest = caption.split(" | ", 1)
+        return title.strip(), rest.strip()
+    return None, caption
+
+
 class QueueConsumer:
     def __init__(
         self,
@@ -69,9 +77,11 @@ class QueueConsumer:
         preset = get_preset(channel.slug)
         base_caption = preset.prompt_template if preset else channel.prompt_template
 
-        caption = request.caption or base_caption
-        if request.caption and preset:
-            caption = f"{request.caption}, {preset.prompt_template}"
+        # タイトルプレフィックスを除去してACE-Step用キャプションを取得
+        _, clean_caption = _split_title_caption(request.caption)
+        caption = clean_caption or base_caption
+        if clean_caption and preset:
+            caption = f"{clean_caption}, {preset.prompt_template}"
 
         bpm = request.bpm
         if bpm is None and preset:
@@ -118,6 +128,11 @@ class QueueConsumer:
         full_path.write_bytes(result.audio_data)
         file_size = os.path.getsize(full_path)
 
+        # キャプションからタイトルを抽出
+        title, _ = _split_title_caption(request.caption)
+        if not title:
+            title = request.mood
+
         track = Track(
             id=track_id,
             request_id=request.id,
@@ -126,6 +141,7 @@ class QueueConsumer:
             file_size=file_size,
             duration_ms=result.duration_ms,
             sample_rate=result.sample_rate,
+            title=title,
             mood=request.mood,
             caption=params.caption,
             lyrics=params.lyrics,

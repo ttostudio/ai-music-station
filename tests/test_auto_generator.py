@@ -97,7 +97,7 @@ async def test_create_auto_request_with_mood(mock_analyze, mock_gen_cls):
     request = await create_auto_request(session, channel)
 
     assert request.mood == "夜のジャズカフェ (listener-preferred elements: jazz)"
-    assert request.caption == "jazz piano"
+    assert request.caption == "テスト曲 | jazz piano"
     assert request.status == "pending"
     session.add.assert_called_once()
     session.commit.assert_awaited_once()

@@ -31,9 +31,9 @@ export function TrackHistory({ channelSlug }: Props) {
           key={track.id}
           className="bg-gray-800 rounded px-3 py-2 text-sm flex justify-between"
         >
-          <span className="truncate flex-1">{track.caption}</span>
+          <span className="truncate flex-1">{track.title || track.caption}</span>
           <span className="text-gray-500 ml-2 shrink-0">
-            {track.play_count}回再生
+            👍{track.like_count ?? 0} / {track.play_count}回再生
           </span>
         </div>
       ))}

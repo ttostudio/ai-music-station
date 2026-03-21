@@ -19,7 +19,7 @@ export function NowPlaying({ track }: Props) {
       <div className="flex items-start justify-between">
         <div>
           <div className="text-sm text-gray-400 mb-1">再生中</div>
-          <div className="font-medium">{track.caption}</div>
+          <div className="font-medium">{track.title || track.caption}</div>
           <div className="flex gap-4 mt-2 text-sm text-gray-400">
             {track.bpm && <span>{track.bpm} BPM</span>}
             {track.music_key && <span>キー: {track.music_key}</span>}
