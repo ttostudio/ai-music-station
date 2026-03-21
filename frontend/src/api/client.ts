@@ -1,4 +1,7 @@
 import type {
+  ChannelCreateBody,
+  ChannelDeleteResponse,
+  ChannelFullResponse,
   ChannelListResponse,
   CreateRequestBody,
   NowPlayingResponse,
@@ -85,4 +88,33 @@ export async function getReaction(
   return fetchJSON<ReactionStatusResponse>(
     `${BASE_URL}/tracks/${trackId}/reactions?session_id=${encodeURIComponent(sessionId)}`,
   );
+}
+
+export async function createChannel(
+  body: ChannelCreateBody,
+): Promise<ChannelFullResponse> {
+  return fetchJSON<ChannelFullResponse>(`${BASE_URL}/channels`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateChannel(
+  slug: string,
+  body: ChannelCreateBody,
+): Promise<ChannelFullResponse> {
+  return fetchJSON<ChannelFullResponse>(`${BASE_URL}/channels/${slug}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteChannel(
+  slug: string,
+): Promise<ChannelDeleteResponse> {
+  return fetchJSON<ChannelDeleteResponse>(`${BASE_URL}/channels/${slug}`, {
+    method: "DELETE",
+  });
 }

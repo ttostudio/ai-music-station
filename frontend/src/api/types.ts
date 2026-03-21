@@ -27,6 +27,47 @@ export interface ChannelListResponse {
   channels: Channel[];
 }
 
+export interface ChannelCreateBody {
+  slug: string;
+  name: string;
+  description?: string;
+  mood_description?: string | null;
+  default_bpm_min?: number;
+  default_bpm_max?: number;
+  default_duration?: number;
+  default_key?: string | null;
+  default_instrumental?: boolean;
+  prompt_template: string;
+  vocal_language?: string | null;
+  auto_generate?: boolean;
+  min_stock?: number;
+  max_stock?: number;
+}
+
+export interface ChannelFullResponse {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  mood_description: string | null;
+  is_active: boolean;
+  default_bpm_min: number;
+  default_bpm_max: number;
+  default_duration: number;
+  default_key: string | null;
+  default_instrumental: boolean;
+  prompt_template: string;
+  vocal_language: string | null;
+  auto_generate: boolean;
+  min_stock: number;
+  max_stock: number;
+}
+
+export interface ChannelDeleteResponse {
+  ok: boolean;
+  deleted_tracks: number;
+}
+
 export interface CreateRequestBody {
   caption?: string;
   lyrics?: string;

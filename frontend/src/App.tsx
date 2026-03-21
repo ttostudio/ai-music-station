@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { ChannelManager } from "./components/ChannelManager";
 import { ChannelSelector } from "./components/ChannelSelector";
 import { LyricsDisplay } from "./components/LyricsDisplay";
 import { NowPlaying } from "./components/NowPlaying";
@@ -12,6 +13,7 @@ import { useNowPlaying } from "./hooks/useNowPlaying";
 export default function App() {
   const { channels, loading, error } = useChannels();
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const [showManager, setShowManager] = useState(false);
   const nowPlaying = useNowPlaying(activeSlug);
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
@@ -65,8 +67,18 @@ export default function App() {
           <p className="text-gray-400 mt-1">
             AIが生成した音楽をライブ配信
           </p>
+          <button
+            onClick={() => setShowManager((v) => !v)}
+            className="mt-2 text-sm text-gray-400 hover:text-white"
+          >
+            {showManager ? "← ラジオに戻る" : "⚙️ チャンネル管理"}
+          </button>
         </header>
 
+        {showManager ? (
+          <ChannelManager onClose={() => setShowManager(false)} />
+        ) : (
+        <>
         <ChannelSelector
           channels={channels}
           activeSlug={activeSlug}
@@ -97,6 +109,8 @@ export default function App() {
         <footer className="text-center text-gray-600 text-xs pt-4">
           AI Music Station &mdash; ACE-Step v1.5 搭載
         </footer>
+        </>
+        )}
       </div>
     </div>
   );
