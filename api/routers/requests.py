@@ -38,6 +38,7 @@ async def create_request(
 
     req = Request(
         channel_id=channel.id,
+        mood=body.mood,
         caption=body.caption,
         lyrics=body.lyrics,
         bpm=body.bpm,

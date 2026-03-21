@@ -58,6 +58,16 @@ export interface Track {
   created_at: string;
 }
 
+export interface ReactionResponse {
+  ok: boolean;
+  count: number;
+}
+
+export interface ReactionStatusResponse {
+  count: number;
+  user_reacted: boolean;
+}
+
 export interface NowPlayingResponse {
   track: Track | null;
 }

@@ -39,6 +39,7 @@ class ChannelListResponse(BaseModel):
 # --- Request ---
 
 class CreateRequestBody(BaseModel):
+    mood: str | None = Field(None, max_length=200)
     caption: str | None = Field(None, max_length=1000)
     lyrics: str | None = Field(None, max_length=5000)
     bpm: int | None = Field(None, ge=30, le=300)

@@ -9,13 +9,16 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from worker.acestep_client import ACEStepClient, GenerationError, GenerationParams
 from worker.channel_presets import get_preset
 from worker.config import settings
+from worker.lyrics_generator import LyricsGenerator
 from worker.models import Channel, Request, Track
+from worker.playlist_generator import generate_weighted_playlist
+from worker.track_retirement import retire_unpopular_tracks
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +30,18 @@ class QueueConsumer:
         client: ACEStepClient | None = None,
         tracks_dir: str = settings.generated_tracks_dir,
         worker_id: str | None = None,
+        lyrics_generator: LyricsGenerator | None = None,
     ):
         self.session_factory = session_factory
         self.client = client or ACEStepClient()
         self.tracks_dir = Path(tracks_dir)
         self.worker_id = worker_id or settings.worker_id or platform.node()
+        if lyrics_generator:
+            self.lyrics_generator = lyrics_generator
+        elif settings.anthropic_api_key:
+            self.lyrics_generator = LyricsGenerator(api_key=settings.anthropic_api_key)
+        else:
+            self.lyrics_generator = None
 
     async def claim_request(self, session: AsyncSession) -> Request | None:
         result = await session.execute(
@@ -62,13 +72,41 @@ class QueueConsumer:
         await session.commit()
         return request
 
-    def build_generation_params(self, request: Request, channel: Channel) -> GenerationParams:
+    def generate_lyrics(self, request: Request, channel: Channel) -> tuple[str, str, str]:
+        """mood指定時にClaude APIで曲名・キャプション・歌詞を生成する。
+
+        Returns:
+            (title, caption, lyrics) のタプル
+        """
+        if not self.lyrics_generator:
+            raise ValueError("ANTHROPIC_API_KEY が設定されていません")
+
+        preset = get_preset(channel.slug)
+        instrumental = preset.instrumental if preset else channel.default_instrumental
+        prompt_template = preset.prompt_template if preset else channel.prompt_template
+
+        result = self.lyrics_generator.generate(
+            mood=request.mood,
+            channel_name=channel.name,
+            channel_description=channel.description or "",
+            instrumental=instrumental,
+            prompt_template=prompt_template,
+        )
+        return result.title, result.caption, result.lyrics
+
+    def build_generation_params(
+        self, request: Request, channel: Channel, *, generated_caption: str = "",
+        generated_lyrics: str = "",
+    ) -> GenerationParams:
         preset = get_preset(channel.slug)
         base_caption = preset.prompt_template if preset else channel.prompt_template
 
-        caption = request.caption or base_caption
-        if request.caption and preset:
+        # mood指定でClaude API生成済みのcaptionがある場合はそれを使用
+        caption = generated_caption or request.caption or base_caption
+        if request.caption and preset and not generated_caption:
             caption = f"{request.caption}, {preset.prompt_template}"
+
+        lyrics = generated_lyrics or request.lyrics
 
         bpm = request.bpm
         if bpm is None and preset:
@@ -83,8 +121,8 @@ class QueueConsumer:
 
         return GenerationParams(
             caption=caption,
-            lyrics=request.lyrics,
-            instrumental=instrumental if not request.lyrics else False,
+            lyrics=lyrics,
+            instrumental=instrumental if not lyrics else False,
             bpm=bpm,
             duration=duration,
             key=key,
@@ -96,7 +134,21 @@ class QueueConsumer:
         if channel is None:
             raise ValueError(f"Channel {request.channel_id} not found")
 
-        params = self.build_generation_params(request, channel)
+        # mood指定時: Claude APIで曲名・キャプション・歌詞を生成
+        title = None
+        generated_caption = ""
+        generated_lyrics = ""
+        if request.mood and not request.caption and not request.lyrics and self.lyrics_generator:
+            title, generated_caption, generated_lyrics = self.generate_lyrics(
+                request, channel,
+            )
+            logger.info("Claude API 生成完了: title='%s'", title)
+
+        params = self.build_generation_params(
+            request, channel,
+            generated_caption=generated_caption,
+            generated_lyrics=generated_lyrics,
+        )
         logger.info(
             "Generating track for channel=%s caption='%s' bpm=%s duration=%s",
             channel.slug,
@@ -123,6 +175,8 @@ class QueueConsumer:
             file_size=file_size,
             duration_ms=result.duration_ms,
             sample_rate=result.sample_rate,
+            title=title,
+            mood=request.mood,
             caption=params.caption,
             lyrics=params.lyrics,
             bpm=params.bpm,
@@ -176,16 +230,85 @@ class QueueConsumer:
                 await self.fail_request(session, request.id, str(e))
                 return True
 
+    async def _run_periodic_jobs(self):
+        """棚卸し・プレイリスト更新の定期ジョブを実行"""
+        async with self.session_factory() as session:
+            # アクティブなチャンネルを取得
+            result = await session.execute(
+                select(Channel).where(Channel.is_active.is_(True))
+            )
+            channels = result.scalars().all()
+
+            for channel in channels:
+                # トラック数が5件未満の場合はスキップ
+                count_result = await session.execute(
+                    select(func.count(Track.id)).where(
+                        Track.channel_id == channel.id,
+                        Track.is_retired.is_(False),
+                    )
+                )
+                track_count = count_result.scalar() or 0
+                if track_count < 5:
+                    continue
+
+                now = datetime.now(timezone.utc)
+
+                # 棚卸し（10分間隔）
+                if (
+                    now.timestamp() - self._last_retirement.timestamp()
+                    >= self.RETIREMENT_INTERVAL
+                ):
+                    try:
+                        await retire_unpopular_tracks(session, channel.id)
+                    except Exception:
+                        logger.exception("棚卸しエラー: チャンネル %s", channel.slug)
+
+                # プレイリスト更新（5分間隔）
+                if (
+                    now.timestamp() - self._last_playlist.timestamp()
+                    >= self.PLAYLIST_INTERVAL
+                ):
+                    try:
+                        await generate_weighted_playlist(
+                            session, channel.id, channel.slug
+                        )
+                    except Exception:
+                        logger.exception(
+                            "プレイリスト生成エラー: チャンネル %s", channel.slug
+                        )
+
+            now = datetime.now(timezone.utc)
+            if (
+                now.timestamp() - self._last_retirement.timestamp()
+                >= self.RETIREMENT_INTERVAL
+            ):
+                self._last_retirement = now
+            if (
+                now.timestamp() - self._last_playlist.timestamp()
+                >= self.PLAYLIST_INTERVAL
+            ):
+                self._last_playlist = now
+
+    # 定期ジョブの間隔（秒）
+    PLAYLIST_INTERVAL = 5 * 60   # 5分
+    RETIREMENT_INTERVAL = 10 * 60  # 10分
+
     async def run(self):
         logger.info(
             "Worker %s starting poll loop (interval=%.1fs)",
             self.worker_id, settings.poll_interval,
         )
+        self._last_playlist = datetime.now(timezone.utc)
+        self._last_retirement = datetime.now(timezone.utc)
+
         while True:
             try:
                 had_work = await self.poll_once()
                 if not had_work:
                     await asyncio.sleep(settings.poll_interval)
+
+                # 定期ジョブの実行チェック
+                await self._run_periodic_jobs()
             except Exception:
                 logger.exception("Error in poll loop")
                 await asyncio.sleep(settings.poll_interval)
