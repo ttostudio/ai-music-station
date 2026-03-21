@@ -13,7 +13,7 @@ class WorkerSettings(BaseSettings):
     generated_tracks_dir: str = "./generated_tracks"
     worker_id: str = ""
 
-    model_config = {"env_prefix": "", "env_file": ".env"}
+    model_config = {"env_prefix": "", "env_file": ".env", "extra": "ignore"}
 
 
 settings = WorkerSettings()

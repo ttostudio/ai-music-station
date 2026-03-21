@@ -12,9 +12,9 @@ if config.config_file_name is not None:
 
 # Override URL from environment if available
 url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
-# Alembic needs synchronous driver
+# Alembic needs synchronous driver (psycopg2-binary)
 if url:
-    url = url.replace("+asyncpg", "+psycopg2").replace("postgresql+psycopg2", "postgresql")
+    url = url.replace("+asyncpg", "+psycopg2")
 
 target_metadata = None
 
