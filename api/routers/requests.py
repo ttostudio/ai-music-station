@@ -1,0 +1,206 @@
+from __future__ import annotations
+
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.db import get_session
+from api.schemas import (
+    CreateRequestBody,
+    RequestDetailResponse,
+    RequestListResponse,
+    RequestResponse,
+    TrackResponse,
+)
+from worker.models import Channel, Request, Track
+
+router = APIRouter(tags=["requests"])
+
+
+@router.post(
+    "/api/channels/{slug}/requests",
+    response_model=RequestResponse,
+    status_code=201,
+)
+async def create_request(
+    slug: str,
+    body: CreateRequestBody,
+    session: AsyncSession = Depends(get_session),
+) -> RequestResponse:
+    result = await session.execute(
+        select(Channel).where(Channel.slug == slug)
+    )
+    channel = result.scalar_one_or_none()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    req = Request(
+        channel_id=channel.id,
+        caption=body.caption,
+        lyrics=body.lyrics,
+        bpm=body.bpm,
+        duration=body.duration,
+        music_key=body.music_key,
+    )
+    session.add(req)
+    await session.commit()
+    await session.refresh(req)
+
+    pos_result = await session.execute(
+        select(func.count())
+        .select_from(Request)
+        .where(
+            Request.channel_id == channel.id,
+            Request.status == "pending",
+            Request.created_at <= req.created_at,
+        )
+    )
+    position = pos_result.scalar() or 1
+
+    return RequestResponse(
+        id=req.id,
+        channel_slug=slug,
+        status=req.status,
+        position=position,
+        created_at=req.created_at,
+    )
+
+
+@router.get(
+    "/api/channels/{slug}/requests",
+    response_model=RequestListResponse,
+)
+async def list_requests(
+    slug: str,
+    status: str = Query("pending"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_session),
+) -> RequestListResponse:
+    result = await session.execute(
+        select(Channel).where(Channel.slug == slug)
+    )
+    channel = result.scalar_one_or_none()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    query = (
+        select(Request)
+        .where(Request.channel_id == channel.id, Request.status == status)
+        .order_by(Request.created_at)
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = await session.execute(query)
+    requests = rows.scalars().all()
+
+    count_result = await session.execute(
+        select(func.count())
+        .select_from(Request)
+        .where(Request.channel_id == channel.id, Request.status == status)
+    )
+    total = count_result.scalar() or 0
+
+    items = []
+    for r in requests:
+        track = None
+        if r.status == "completed":
+            track_row = await session.execute(
+                select(Track).where(Track.request_id == r.id)
+            )
+            t = track_row.scalar_one_or_none()
+            if t:
+                track = TrackResponse(
+                    id=t.id,
+                    caption=t.caption,
+                    duration_ms=t.duration_ms,
+                    bpm=t.bpm,
+                    music_key=t.music_key,
+                    instrumental=t.instrumental,
+                    play_count=t.play_count,
+                    created_at=t.created_at,
+                )
+        items.append(
+            RequestDetailResponse(
+                id=r.id,
+                channel_slug=slug,
+                status=r.status,
+                caption=r.caption,
+                lyrics=r.lyrics,
+                bpm=r.bpm,
+                duration=r.duration,
+                music_key=r.music_key,
+                created_at=r.created_at,
+                started_at=r.started_at,
+                completed_at=r.completed_at,
+                error_message=r.error_message,
+                track=track,
+            )
+        )
+
+    return RequestListResponse(requests=items, total=total)
+
+
+@router.get("/api/requests/{request_id}", response_model=RequestDetailResponse)
+async def get_request(
+    request_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> RequestDetailResponse:
+    req = await session.get(Request, request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    channel_result = await session.execute(
+        select(Channel).where(Channel.id == req.channel_id)
+    )
+    channel = channel_result.scalar_one()
+
+    track = None
+    if req.status == "completed":
+        track_row = await session.execute(
+            select(Track).where(Track.request_id == req.id)
+        )
+        t = track_row.scalar_one_or_none()
+        if t:
+            track = TrackResponse(
+                id=t.id,
+                caption=t.caption,
+                duration_ms=t.duration_ms,
+                bpm=t.bpm,
+                music_key=t.music_key,
+                instrumental=t.instrumental,
+                play_count=t.play_count,
+                created_at=t.created_at,
+            )
+
+    position = None
+    if req.status == "pending":
+        pos_result = await session.execute(
+            select(func.count())
+            .select_from(Request)
+            .where(
+                Request.channel_id == req.channel_id,
+                Request.status == "pending",
+                Request.created_at <= req.created_at,
+            )
+        )
+        position = pos_result.scalar()
+
+    return RequestDetailResponse(
+        id=req.id,
+        channel_slug=channel.slug,
+        status=req.status,
+        caption=req.caption,
+        lyrics=req.lyrics,
+        bpm=req.bpm,
+        duration=req.duration,
+        music_key=req.music_key,
+        position=position,
+        created_at=req.created_at,
+        started_at=req.started_at,
+        completed_at=req.completed_at,
+        error_message=req.error_message,
+        track=track,
+    )
