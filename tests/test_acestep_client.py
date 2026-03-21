@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -33,16 +32,32 @@ def default_params():
 
 
 def _make_chat_response(audio_b64: str = "ZmFrZS1hdWRpby1kYXRh") -> MagicMock:
-    """Create a mock chat completions response with base64 audio."""
+    """Create a mock chat completions response matching ACE-Step's actual format.
+
+    Real format: choices[0].message.audio[0].audio_url.url = "data:audio/mpeg;base64,..."
+    """
     resp = MagicMock()
     resp.status_code = 200
     resp.raise_for_status = MagicMock()
     resp.json = MagicMock(return_value={
+        "id": "chatcmpl-test",
+        "object": "chat.completion",
+        "model": "ace-step-v1.5",
         "choices": [{
+            "index": 0,
             "message": {
-                "content": json.dumps({"audio_base64": audio_b64}),
+                "role": "assistant",
+                "content": "## Metadata\n**Caption:** test",
+                "audio": [{
+                    "type": "audio_url",
+                    "audio_url": {
+                        "url": f"data:audio/mpeg;base64,{audio_b64}",
+                    },
+                }],
             },
+            "finish_reason": "stop",
         }],
+        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
     })
     return resp
 
@@ -185,14 +200,19 @@ class TestACEStepClient:
 
     @pytest.mark.asyncio
     async def test_audio_url_download(self, client, default_params):
-        """Test extraction when response contains audio_url instead of base64."""
+        """Test extraction when response contains http URL instead of data URI."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.raise_for_status = MagicMock()
         mock_response.json = MagicMock(return_value={
             "choices": [{
                 "message": {
-                    "content": json.dumps({"audio_url": "http://test/audio.flac"}),
+                    "role": "assistant",
+                    "content": "test",
+                    "audio": [{
+                        "type": "audio_url",
+                        "audio_url": {"url": "http://test/audio.flac"},
+                    }],
                 },
             }],
         })

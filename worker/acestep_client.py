@@ -123,37 +123,46 @@ class ACEStepClient:
     def _extract_audio(self, data: dict) -> bytes:
         """Extract audio bytes from chat completions response.
 
-        ACE-Step returns audio as base64-encoded data in the response content,
-        or as a URL pointing to the generated audio file.
+        ACE-Step response format:
+          choices[0].message.audio[0].audio_url.url = "data:audio/mpeg;base64,..."
         """
         try:
             choices = data.get("choices", [])
             if not choices:
                 raise GenerationError("No choices in response")
 
-            content = choices[0].get("message", {}).get("content", "")
+            message = choices[0].get("message", {})
 
-            # Try parsing content as JSON (may contain audio_url or audio_base64)
+            # Primary: message.audio[] array with audio_url entries
+            audio_list = message.get("audio")
+            if audio_list and isinstance(audio_list, list):
+                for entry in audio_list:
+                    if not isinstance(entry, dict):
+                        continue
+                    # entry = {type: "audio_url", audio_url: {url: "data:audio/mpeg;base64,..."}}
+                    audio_url_obj = entry.get("audio_url", {})
+                    url = audio_url_obj.get("url", "") if isinstance(audio_url_obj, dict) else ""
+                    if url.startswith("data:"):
+                        # data URI: data:audio/mpeg;base64,<b64data>
+                        _, _, b64 = url.partition(",")
+                        if b64:
+                            return base64.b64decode(b64)
+                    elif url.startswith("http"):
+                        return self._download_audio(url)
+
+            # Fallback: content as JSON with audio_base64 or audio_url
+            content = message.get("content", "")
             try:
                 content_data = json.loads(content) if isinstance(content, str) else content
                 if isinstance(content_data, dict):
-                    # Base64 encoded audio
                     if "audio_base64" in content_data:
                         return base64.b64decode(content_data["audio_base64"])
-                    # Audio URL - download it
                     if "audio_url" in content_data:
                         return self._download_audio(content_data["audio_url"])
             except (json.JSONDecodeError, TypeError):
                 pass
 
-            # Content might be base64 audio directly
-            if content and len(content) > 1000:
-                try:
-                    return base64.b64decode(content)
-                except Exception:
-                    pass
-
-            # Check for audio in the response metadata
+            # Fallback: top-level audio field
             if "audio" in data:
                 audio = data["audio"]
                 if isinstance(audio, str):
@@ -161,7 +170,11 @@ class ACEStepClient:
                 if isinstance(audio, dict) and "data" in audio:
                     return base64.b64decode(audio["data"])
 
-            raise GenerationError(f"Could not extract audio from response: {list(data.keys())}")
+            raise GenerationError(
+                f"Could not extract audio from response. "
+                f"Keys: {list(data.keys())}, "
+                f"message keys: {list(message.keys())}"
+            )
 
         except GenerationError:
             raise
@@ -169,7 +182,7 @@ class ACEStepClient:
             raise GenerationError(f"Failed to parse generation response: {e}") from e
 
     def _download_audio(self, url: str) -> bytes:
-        """Download audio from a URL synchronously (called within async context)."""
+        """Download audio from a URL."""
         import httpx as _httpx
         with _httpx.Client(timeout=30) as client:
             resp = client.get(url)
