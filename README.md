@@ -1,78 +1,114 @@
 # AI Music Station
 
-ACE-Step v1.5 powered music generation and streaming service. Request songs by channel (anime, LoFi, etc.) and listen via browser like a radio station.
-
-## Overview
-
-AI Music Station runs ACE-Step v1.5 on Mac mini (Apple Silicon) to generate music on-demand, queue tracks, and stream them like a radio station. Accessible via Tailscale.
-
-## Features
-
-- Per-channel music requests (e.g., anime song channel, LoFi channel, jazz channel)
-- Music generation using ACE-Step v1.5 on Apple Silicon
-- Queue management with automatic playback
-- Browser-based streaming player (HLS/Icecast)
-- Self-contained Docker Compose deployment
-- Start/Stop from AI Company OS dashboard
-
-## Tech Stack
-
-- **Music Generation:** ACE-Step v1.5 (Apple Silicon optimized)
-- **Backend:** Python (FastAPI - generation queue & API)
-- **Streaming:** Icecast / HLS
-- **Frontend:** React (player UI with channel selector)
-- **Database:** PostgreSQL (track metadata, queue, channels)
-- **Infrastructure:** Docker Compose, Caddy (reverse proxy)
-
-## Getting Started
-
-### Prerequisites
-
-- Docker & Docker Compose
-- Mac mini with Apple Silicon (for ACE-Step inference)
-- Python 3.11+ (for music generation worker)
-
-### Quick Start
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-docker compose up -d
-```
-
-The music station will be available at `http://localhost:3200`.
-
-## Development
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-npm install
-
-# Run tests
-pytest
-npm test
-
-# Run linter
-ruff check .
-npm run lint
-```
+ACE-Step v1.5 powered music generation and streaming service. Request songs by channel (anime, LoFi, jazz) and listen via browser like a radio station.
 
 ## Architecture
 
 ```
-Channel Request (web UI / API)
-  -> Request Queue (PostgreSQL)
-  -> ACE-Step v1.5 Worker (music generation)
-  -> Generated Track Storage
-  -> Streaming Server (Icecast/HLS)
-  -> Web Player (browser)
+Browser → Caddy (:3200) → Frontend (React SPA)
+                        → /api/* → FastAPI (:8000)
+                        → /stream/* → Icecast2 (:8000)
+
+Icecast2 ← Liquidsoap (1 per channel, reads FLAC from shared volume)
+FastAPI ← PostgreSQL (:5432) ← Worker (host-native Python process)
+Worker → ACE-Step API (:8001, host-native MLX) → FLAC → ./generated_tracks/
 ```
+
+### Services
+
+| Service | Runtime | Description |
+|---------|---------|-------------|
+| `postgres` | Docker | PostgreSQL 16 — queue, metadata, channels |
+| `api` | Docker | FastAPI — REST API |
+| `icecast` | Docker | Icecast2 — audio streaming |
+| `liquidsoap-{lofi,anime,jazz}` | Docker | Liquidsoap — reads tracks, feeds Icecast |
+| `frontend` | Docker | React SPA (nginx) |
+| `caddy` | Docker | Reverse proxy (port 3200) |
+| `worker` | Host | ACE-Step queue consumer (Apple Silicon) |
+
+## Quick Start
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/ttostudio/ai-music-station.git
+cd ai-music-station
+cp .env.example .env
+# Edit .env with secure passwords
+```
+
+### 2. Start Docker services
+
+```bash
+docker compose up -d
+```
+
+This starts PostgreSQL, runs migrations, seeds channels, starts the API, Icecast2 streaming, Liquidsoap per channel, frontend, and Caddy reverse proxy.
+
+### 3. Set up the worker (Apple Silicon host)
+
+The music generation worker runs on the host Mac mini for MPS/MLX GPU access:
+
+```bash
+# Run the setup script
+./scripts/setup-worker.sh
+
+# Start ACE-Step API (in a separate terminal)
+cd ~/ace-step && uv run acestep-api
+
+# Start the worker
+python3 -m worker
+```
+
+### 4. Open the player
+
+Visit **http://localhost:3200** in your browser.
+
+## Channels
+
+| Channel | Style | BPM | Duration |
+|---------|-------|-----|----------|
+| LoFi Beats | Chill lo-fi hip hop | 70-90 | 180s |
+| Anime Songs | J-pop anime themes | 120-160 | 90s |
+| Jazz Station | Smooth jazz | 100-140 | 240s |
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| GET | `/api/channels` | List channels |
+| GET | `/api/channels/{slug}` | Channel detail |
+| POST | `/api/channels/{slug}/requests` | Submit song request |
+| GET | `/api/channels/{slug}/tracks` | List generated tracks |
+| GET | `/api/channels/{slug}/now-playing` | Current track |
+
+## Development
+
+```bash
+# Python
+pip install -r requirements.txt
+ruff check .
+pytest
+
+# Frontend
+cd frontend && npm ci
+npm run lint
+npm test
+
+# Docker
+docker compose config  # validate
+```
+
+## Tech Stack
+
+- **Music Generation:** ACE-Step v1.5 (Apple Silicon MLX)
+- **Backend:** Python FastAPI + SQLAlchemy + Alembic
+- **Streaming:** Icecast2 + Liquidsoap (OGG Vorbis)
+- **Frontend:** React 19 + Vite + Tailwind CSS
+- **Database:** PostgreSQL 16
+- **Infrastructure:** Docker Compose, Caddy
 
 ## License
 
-MIT - see [LICENSE](LICENSE) for details.
-
-## Contributing
-
-This is an open source project by [ttoStudio](https://github.com/ttostudio). Contributions are welcome!
+MIT — see [LICENSE](LICENSE) for details.
