@@ -8,10 +8,13 @@ interface Props {
 export function RequestForm({ channelSlug }: Props) {
   const [caption, setCaption] = useState("");
   const [lyrics, setLyrics] = useState("");
+  const [mood, setMood] = useState("");
   const [bpm, setBpm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const useMood = mood.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,14 +24,19 @@ export function RequestForm({ channelSlug }: Props) {
 
     try {
       const body: Record<string, unknown> = {};
-      if (caption.trim()) body.caption = caption.trim();
-      if (lyrics.trim()) body.lyrics = lyrics.trim();
+      if (useMood) {
+        body.mood = mood.trim();
+      } else {
+        if (caption.trim()) body.caption = caption.trim();
+        if (lyrics.trim()) body.lyrics = lyrics.trim();
+      }
       if (bpm) body.bpm = parseInt(bpm, 10);
 
       const result = await createRequest(channelSlug, body);
       setSuccess(`リクエストを送信しました！ 待ち順: #${result.position}`);
       setCaption("");
       setLyrics("");
+      setMood("");
       setBpm("");
     } catch (e) {
       setError(
@@ -48,21 +56,39 @@ export function RequestForm({ channelSlug }: Props) {
         トラックをリクエスト
       </div>
 
-      <input
-        type="text"
-        value={caption}
-        onChange={(e) => setCaption(e.target.value)}
-        placeholder="作りたい音楽を説明してください..."
-        className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      />
-
       <textarea
-        value={lyrics}
-        onChange={(e) => setLyrics(e.target.value)}
-        placeholder="歌詞（任意、[Verse], [Chorus] タグ使用可）"
-        rows={3}
+        value={mood}
+        onChange={(e) => setMood(e.target.value)}
+        placeholder="雰囲気（例: 夕焼けの帰り道、ノスタルジック）"
+        rows={2}
         className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
       />
+
+      {!useMood && (
+        <>
+          <input
+            type="text"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="作りたい音楽を説明してください..."
+            className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+
+          <textarea
+            value={lyrics}
+            onChange={(e) => setLyrics(e.target.value)}
+            placeholder="歌詞（任意、[Verse], [Chorus] タグ使用可）"
+            rows={3}
+            className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+          />
+        </>
+      )}
+
+      {useMood && (
+        <p className="text-xs text-gray-500">
+          雰囲気を指定すると、説明・歌詞フィールドは無効になります
+        </p>
+      )}
 
       <div className="flex gap-3 items-end">
         <div>
