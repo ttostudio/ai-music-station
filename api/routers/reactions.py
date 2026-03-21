@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.db import get_session
@@ -23,25 +24,24 @@ async def add_reaction(
     if not track:
         raise HTTPException(status_code=404, detail="トラックが見つかりません")
 
-    # 既存リアクションチェック
-    existing = await session.execute(
-        select(Reaction).where(
-            Reaction.track_id == track.id,
-            Reaction.session_id == body.session_id,
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="すでにリアクション済みです")
-
     reaction = Reaction(
         track_id=track.id,
         session_id=body.session_id,
         reaction_type=body.reaction_type,
     )
     session.add(reaction)
-    track.like_count = (track.like_count or 0) + 1
-    await session.commit()
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="既にリアクション済みです") from None
 
+    # like_count をアトミックに更新
+    await session.execute(
+        update(Track).where(Track.id == track.id).values(like_count=Track.like_count + 1)
+    )
+    await session.commit()
+    await session.refresh(track)
     return ReactionResponse(ok=True, count=track.like_count)
 
 
@@ -65,9 +65,14 @@ async def remove_reaction(
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="リアクションが見つかりません")
 
-    track.like_count = max((track.like_count or 0) - 1, 0)
+    # like_count をアトミックに更新（0未満にならないようガード）
+    await session.execute(
+        update(Track)
+        .where(Track.id == track.id)
+        .values(like_count=func.greatest(Track.like_count - 1, 0))
+    )
     await session.commit()
-
+    await session.refresh(track)
     return ReactionResponse(ok=True, count=track.like_count)
 
 

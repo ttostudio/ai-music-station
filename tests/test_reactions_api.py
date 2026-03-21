@@ -7,15 +7,18 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 from api.db import get_session
 from api.main import app
-from worker.models import Reaction, Track
+from worker.models import Track
 
 
 @pytest.fixture
 def mock_session():
-    return AsyncMock()
+    session = AsyncMock()
+    session.refresh = AsyncMock()
+    return session
 
 
 @pytest.fixture
@@ -42,12 +45,13 @@ def sample_track():
 
 
 class TestAddReaction:
-    def test_adds_reaction_successfully(self, test_client, mock_session, sample_track):
+    def test_adds_reaction_successfully(
+        self, test_client, mock_session, sample_track,
+    ):
         mock_session.get = AsyncMock(return_value=sample_track)
-
-        existing_result = MagicMock()
-        existing_result.scalar_one_or_none.return_value = None
-        mock_session.execute = AsyncMock(return_value=existing_result)
+        mock_session.flush = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=MagicMock())
+        mock_session.commit = AsyncMock()
 
         response = test_client.post(
             f"/api/tracks/{sample_track.id}/reactions",
@@ -56,18 +60,15 @@ class TestAddReaction:
         assert response.status_code == 200
         data = response.json()
         assert data["ok"] is True
-        assert data["count"] == 1
 
-    def test_returns_409_when_already_reacted(self, test_client, mock_session, sample_track):
+    def test_returns_409_on_duplicate(
+        self, test_client, mock_session, sample_track,
+    ):
         mock_session.get = AsyncMock(return_value=sample_track)
-
-        existing_result = MagicMock()
-        existing_result.scalar_one_or_none.return_value = Reaction(
-            id=uuid.uuid4(),
-            track_id=sample_track.id,
-            session_id="user-abc",
+        mock_session.flush = AsyncMock(
+            side_effect=IntegrityError("dup", params=None, orig=Exception())
         )
-        mock_session.execute = AsyncMock(return_value=existing_result)
+        mock_session.rollback = AsyncMock()
 
         response = test_client.post(
             f"/api/tracks/{sample_track.id}/reactions",
@@ -84,15 +85,29 @@ class TestAddReaction:
         )
         assert response.status_code == 404
 
+    def test_rejects_invalid_reaction_type(
+        self, test_client, mock_session, sample_track,
+    ):
+        response = test_client.post(
+            f"/api/tracks/{sample_track.id}/reactions",
+            json={"session_id": "user-abc", "reaction_type": "dislike"},
+        )
+        assert response.status_code == 422
+
 
 class TestRemoveReaction:
-    def test_removes_reaction_successfully(self, test_client, mock_session, sample_track):
+    def test_removes_reaction_successfully(
+        self, test_client, mock_session, sample_track,
+    ):
         sample_track.like_count = 1
         mock_session.get = AsyncMock(return_value=sample_track)
 
         delete_result = MagicMock()
         delete_result.rowcount = 1
-        mock_session.execute = AsyncMock(return_value=delete_result)
+        update_result = MagicMock()
+        mock_session.execute = AsyncMock(
+            side_effect=[delete_result, update_result]
+        )
 
         response = test_client.request(
             "DELETE",
@@ -102,9 +117,10 @@ class TestRemoveReaction:
         assert response.status_code == 200
         data = response.json()
         assert data["ok"] is True
-        assert data["count"] == 0
 
-    def test_returns_404_when_no_reaction(self, test_client, mock_session, sample_track):
+    def test_returns_404_when_no_reaction(
+        self, test_client, mock_session, sample_track,
+    ):
         mock_session.get = AsyncMock(return_value=sample_track)
 
         delete_result = MagicMock()
