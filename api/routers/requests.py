@@ -45,13 +45,13 @@ async def create_request(
     lyrics = body.lyrics
     mood = body.mood
 
-    # mood指定時: Claude APIで歌詞・曲名・キャプションを自動生成
-    if mood and settings.anthropic_api_key:
+    # mood指定時: claude CLIで歌詞・曲名・キャプションを自動生成
+    if mood:
         try:
             generator = LyricsGenerator(
-                api_key=settings.anthropic_api_key,
+                claude_command=settings.claude_command,
             )
-            gen_result = generator.generate(
+            gen_result = await generator.generate(
                 mood=mood,
                 channel_name=channel.name,
                 channel_description=channel.description,

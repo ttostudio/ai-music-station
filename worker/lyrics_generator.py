@@ -1,14 +1,12 @@
-"""歌詞・曲名の自動生成モジュール（Claude API統合）"""
+"""歌詞・曲名の自動生成モジュール（claude CLI統合）"""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass
-
-import anthropic
-
-from worker.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +21,12 @@ class LyricsResult:
 
 
 class LyricsGenerator:
-    """Claude APIを使用して雰囲気から歌詞・曲名・キャプションを生成する"""
+    """ローカルの claude CLI を使って歌詞・曲名を生成する"""
 
-    def __init__(self, api_key: str | None = None):
-        self.client = anthropic.Anthropic(
-            api_key=api_key or settings.anthropic_api_key,
-        )
+    def __init__(self, claude_command: str = "claude"):
+        self.claude_command = claude_command
 
-    def generate(
+    async def generate(
         self, mood: str, channel_name: str,
         channel_description: str | None = None,
     ) -> LyricsResult:
@@ -44,56 +40,32 @@ class LyricsGenerator:
         Returns:
             LyricsResult: 生成された曲名・キャプション・歌詞
         """
-        channel_context = f"チャンネル「{channel_name}」"
-        if channel_description:
-            channel_context += f"（{channel_description}）"
-
-        prompt = (
-            f"{channel_context}向けの楽曲を作成します。\n"
-            f"雰囲気: {mood}\n\n"
-            "以下のJSON形式で、楽曲の曲名・音楽生成用キャプション"
-            "・歌詞を生成してください。\n"
-            "歌詞は [Verse], [Chorus], [Bridge] などの"
-            "セクションタグを含めてください。\n"
-            "キャプションは音楽生成AIへの指示として使われるため、"
-            "英語で音楽ジャンル・楽器・雰囲気を簡潔に記述してください。\n\n"
-            "```json\n"
-            "{\n"
-            '  "title": "曲名（日本語）",\n'
-            '  "caption": "music generation caption in English, '
-            'describing genre, instruments, mood",\n'
-            '  "lyrics": "[Verse]\\n歌詞の内容...\\n\\n[Chorus]\\n..."\n'
-            "}\n"
-            "```\n\n"
-            "JSONのみを返してください。説明は不要です。"
-        )
+        prompt = self._build_prompt(mood, channel_name, channel_description)
 
         try:
-            message = self.client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}],
+            proc = await asyncio.create_subprocess_exec(
+                self.claude_command, "-p", prompt,
+                "--output-format", "json",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=120,
             )
 
-            response_text = message.content[0].text
-            if "```json" in response_text:
-                response_text = (
-                    response_text.split("```json")[1].split("```")[0]
-                )
-            elif "```" in response_text:
-                response_text = (
-                    response_text.split("```")[1].split("```")[0]
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"claude CLI failed: {stderr.decode()}",
                 )
 
-            data = json.loads(response_text.strip())
+            # claude --output-format json は {"type":"result","result":"..."} を返す
+            output = json.loads(stdout.decode())
+            text = output.get("result", stdout.decode())
 
-            return LyricsResult(
-                title=data["title"],
-                caption=data["caption"],
-                lyrics=data["lyrics"],
-            )
+            return self._parse_response(text)
         except (
-            anthropic.APIError, json.JSONDecodeError, KeyError, IndexError,
+            RuntimeError, json.JSONDecodeError, KeyError,
+            TimeoutError, OSError,
         ) as e:
             logger.warning(
                 "歌詞生成に失敗しました（フォールバック使用）: %s", e,
@@ -103,3 +75,35 @@ class LyricsGenerator:
                 caption=f"{mood}, {channel_name}",
                 lyrics=f"[Verse]\n{mood}",
             )
+
+    def _build_prompt(
+        self, mood: str, channel_name: str,
+        channel_description: str | None,
+    ) -> str:
+        return (
+            "あなたは音楽の作詞家です。"
+            "以下の雰囲気に合った楽曲を作成してください。\n\n"
+            f"チャンネル: {channel_name}\n"
+            f"チャンネル説明: {channel_description or ''}\n"
+            f"雰囲気: {mood}\n\n"
+            "以下のJSON形式のみで回答してください"
+            "（他のテキストは不要）:\n"
+            "{\n"
+            '  "title": "曲名（日本語）",\n'
+            '  "caption": "ACE-Step用の英語キャプション'
+            "（ジャンル、楽器、雰囲気を含む、100語以内）\",\n"
+            '  "lyrics": "[Verse 1]\\n歌詞...\\n\\n[Chorus]\\n歌詞...'
+            '\\n\\n[Verse 2]\\n歌詞...\\n\\n[Chorus]\\n歌詞..."\n'
+            "}"
+        )
+
+    def _parse_response(self, text: str) -> LyricsResult:
+        """レスポンスからJSON部分を抽出してパースする"""
+        match = re.search(r'\{[^{}]*"title"[^{}]*\}', text, re.DOTALL)
+        data = json.loads(match.group()) if match else json.loads(text)
+
+        return LyricsResult(
+            title=data["title"],
+            caption=data["caption"],
+            lyrics=data["lyrics"],
+        )

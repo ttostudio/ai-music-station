@@ -13,9 +13,6 @@ alembic==1.14.1
 # HTTP Client (worker -> ACE-Step API)
 httpx==0.28.1
 
-# AI（歌詞・曲名生成）
-anthropic>=0.45.0
-
 # System monitoring
 psutil>=5.9.0
 
