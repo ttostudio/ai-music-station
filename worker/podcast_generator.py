@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 import aiohttp
@@ -51,20 +49,21 @@ def strip_markdown(text: str) -> str:
 
 async def fetch_articles() -> list[dict]:
     """ai-tech-blogから公開記事一覧を取得"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"{TECH_BLOG_API}/articles") as resp:
-            resp.raise_for_status()
-            data = await resp.json()
-            return data.get("data", [])
+    async with aiohttp.ClientSession() as session, session.get(f"{TECH_BLOG_API}/articles") as resp:
+        resp.raise_for_status()
+        data = await resp.json()
+        return data.get("data", [])
 
 
 async def fetch_article(slug: str) -> dict:
     """記事の全文を取得"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"{TECH_BLOG_API}/articles/{slug}") as resp:
-            resp.raise_for_status()
-            data = await resp.json()
-            return data.get("data", {})
+    async with (
+        aiohttp.ClientSession() as session,
+        session.get(f"{TECH_BLOG_API}/articles/{slug}") as resp,
+    ):
+        resp.raise_for_status()
+        data = await resp.json()
+        return data.get("data", {})
 
 
 def build_narration_text(article: dict) -> str:

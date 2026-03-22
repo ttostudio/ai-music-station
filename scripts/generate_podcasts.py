@@ -26,8 +26,8 @@ from sqlalchemy.orm import sessionmaker
 
 from worker.config import settings
 from worker.models import Channel, PodcastEpisode
-from worker.podcast_generator import generate_all_episodes, generate_episode
 from worker.playlist_generator import generate_podcast_playlist
+from worker.podcast_generator import generate_all_episodes, generate_episode
 
 logging.basicConfig(
     level=logging.INFO,

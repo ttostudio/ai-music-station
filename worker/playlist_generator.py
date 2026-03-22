@@ -19,7 +19,7 @@ async def generate_weighted_playlist(
     channel_id,
     channel_slug: str,
     tracks_dir: str,
-    playlist_tracks_dir: str | None = None,  # Liquidsoap から見えるパス（省略時は tracks_dir と同一）
+    playlist_tracks_dir: str | None = None,  # Liquidsoap 用パス（省略時は tracks_dir）
 ) -> int:
     """like_count による重み付きシャッフルプレイリストを生成する。
 
