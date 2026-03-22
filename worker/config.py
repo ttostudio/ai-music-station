@@ -11,6 +11,7 @@ class WorkerSettings(BaseSettings):
     poll_interval: float = 2.0  # seconds
     heartbeat_interval: float = 30.0  # seconds
     generated_tracks_dir: str = "./generated_tracks"
+    liquidsoap_tracks_dir: str = "/tracks"  # Liquidsoap コンテナ内パス
     worker_id: str = ""
     claude_command: str = "claude"
 

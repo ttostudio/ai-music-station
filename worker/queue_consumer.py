@@ -220,6 +220,7 @@ class QueueConsumer:
                     continue
                 await generate_weighted_playlist(
                     session, ch.id, ch.slug, str(self.tracks_dir),
+                    playlist_tracks_dir=settings.liquidsoap_tracks_dir,
                 )
 
     async def _run_track_retirement(self):

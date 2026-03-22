@@ -189,5 +189,23 @@ class WorkerHeartbeat(BaseModel):
     active_request_id: uuid.UUID | None = None
 
 
+# --- Podcast ---
+
+class PodcastEpisodeResponse(BaseModel):
+    id: uuid.UUID
+    article_slug: str
+    title: str
+    description: str | None = None
+    duration_ms: int | None = None
+    episode_number: int
+    status: str
+    created_at: datetime
+
+
+class PodcastEpisodeListResponse(BaseModel):
+    episodes: list[PodcastEpisodeResponse]
+    total: int
+
+
 # Forward ref update
 RequestDetailResponse.model_rebuild()

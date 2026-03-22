@@ -66,7 +66,9 @@ describe("ChannelSelector", () => {
         onSelect={() => {}}
       />,
     );
-    expect(screen.getAllByText("(2件待ち)").length).toBeGreaterThan(0);
+    // New card layout shows queue depth as "10曲 · 2件待ち" in meta div
+    const metaEl = screen.getByLabelText("10曲、2件待ち");
+    expect(metaEl).toBeInTheDocument();
   });
 
   it("hides inactive channels", () => {

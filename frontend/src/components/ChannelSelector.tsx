@@ -14,35 +14,72 @@ function getChannelGradient(slug: string): string {
   return "channel-gradient-default";
 }
 
+function getChannelIconGradient(slug: string): string {
+  if (slug.includes("lofi") || slug.includes("lo-fi")) return "channel-icon-lofi";
+  if (slug.includes("anime")) return "channel-icon-anime";
+  if (slug.includes("jazz")) return "channel-icon-jazz";
+  if (slug.includes("game")) return "channel-icon-game";
+  return "channel-icon-default";
+}
+
+function getChannelIcon(slug: string): string {
+  if (slug.includes("lofi") || slug.includes("lo-fi")) return "🎧";
+  if (slug.includes("anime")) return "🎤";
+  if (slug.includes("jazz")) return "🎷";
+  if (slug.includes("game")) return "🎮";
+  return "🎵";
+}
+
 export function ChannelSelector({ channels, activeSlug, onSelect }: Props) {
   const visibleChannels = channels.filter((c) => c.is_active);
 
   return (
-    <div className="flex gap-3 flex-wrap slide-up">
+    <div
+      className="channel-card-grid slide-up"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(auto-fill, minmax(var(--card-channel-width, 160px), 1fr))`,
+        gap: "var(--card-channel-gap, 1rem)",
+      }}
+      role="radiogroup"
+      aria-label="チャンネル選択"
+    >
       {visibleChannels.map((channel) => {
         const isActive = activeSlug === channel.slug;
         const gradientClass = getChannelGradient(channel.slug);
+        const iconGradientClass = getChannelIconGradient(channel.slug);
 
         return (
           <button
             key={channel.slug}
             onClick={() => onSelect(channel.slug)}
-            className={`group relative px-5 py-3 rounded-xl font-medium transition-all duration-300 overflow-hidden ${
-              isActive
-                ? `${gradientClass} text-white shadow-lg scale-105`
-                : "glass-card-hover text-gray-300"
+            className={`channel-card focus-ring ${
+              isActive ? `channel-card-active ${gradientClass}` : ""
             }`}
+            role="radio"
+            aria-checked={isActive}
+            aria-label={`${channel.name}チャンネルを選択`}
           >
-            {/* Active indicator dot */}
-            {isActive && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white/80 glow-pulse" />
-            )}
+            {/* アイコン with channel gradient */}
+            <div className={`channel-card-icon ${iconGradientClass}`} aria-hidden="true">
+              <span>{getChannelIcon(channel.slug)}</span>
+            </div>
 
-            <span className="relative z-10">{channel.name}</span>
-            {channel.queue_depth > 0 && (
-              <span className="relative z-10 ml-2 text-xs opacity-70">
-                ({channel.queue_depth}件待ち)
-              </span>
+            {/* チャンネル名 */}
+            <div className="channel-card-name">{channel.name}</div>
+
+            {/* メタデータ */}
+            <div
+              className="channel-card-meta"
+              aria-label={`${channel.total_tracks}曲${channel.queue_depth > 0 ? `、${channel.queue_depth}件待ち` : ""}`}
+            >
+              {channel.total_tracks}曲
+              {channel.queue_depth > 0 && ` · ${channel.queue_depth}件待ち`}
+            </div>
+
+            {/* アクティブインジケーター */}
+            {isActive && (
+              <span className="channel-card-active-dot" aria-hidden="true" />
             )}
           </button>
         );

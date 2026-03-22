@@ -54,3 +54,71 @@ describe("LyricsDisplay", () => {
     expect(screen.getByText("歌詞")).toBeInTheDocument();
   });
 });
+
+describe("LyricsDisplay karaoke-overlay mode", () => {
+  const simpleLyrics = "星空に浮かぶ\n君の笑顔が\n輝いている";
+
+  it("renders karaoke-overlay class", () => {
+    render(
+      <LyricsDisplay
+        lyrics={simpleLyrics}
+        elapsedMs={0}
+        durationMs={120000}
+        mode="karaoke-overlay"
+      />,
+    );
+    expect(document.querySelector(".karaoke-overlay")).toBeInTheDocument();
+  });
+
+  it("renders all lyric lines", () => {
+    render(
+      <LyricsDisplay
+        lyrics={simpleLyrics}
+        elapsedMs={0}
+        durationMs={120000}
+        mode="karaoke-overlay"
+      />,
+    );
+    expect(screen.getByText("星空に浮かぶ")).toBeInTheDocument();
+    expect(screen.getByText("君の笑顔が")).toBeInTheDocument();
+    expect(screen.getByText("輝いている")).toBeInTheDocument();
+  });
+
+  it("has aria-live polite for accessibility", () => {
+    render(
+      <LyricsDisplay
+        lyrics={simpleLyrics}
+        elapsedMs={0}
+        durationMs={120000}
+        mode="karaoke-overlay"
+      />,
+    );
+    const overlay = document.querySelector(".karaoke-overlay");
+    expect(overlay).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("marks first line as active when elapsed is 0", () => {
+    render(
+      <LyricsDisplay
+        lyrics={simpleLyrics}
+        elapsedMs={0}
+        durationMs={120000}
+        mode="karaoke-overlay"
+      />,
+    );
+    const firstLine = screen.getByText("星空に浮かぶ");
+    expect(firstLine.closest(".karaoke-line-active")).toBeInTheDocument();
+  });
+
+  it("returns null for empty lyrics in karaoke mode", () => {
+    const { container } = render(
+      <LyricsDisplay
+        lyrics=""
+        elapsedMs={0}
+        durationMs={120000}
+        mode="karaoke-overlay"
+      />,
+    );
+    expect(container.innerHTML).toBe("");
+  });
+});
