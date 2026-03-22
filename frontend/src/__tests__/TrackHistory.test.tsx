@@ -93,11 +93,14 @@ describe("TrackHistory", () => {
       expect(screen.getByText("▼")).toBeInTheDocument();
     });
 
-    // Collapse
+    // Collapse — FR-104: 常時レンダリング + CSS max-height トランジション
+    // DOM上は残るが expand-content クラスのみ（expand-content-open なし）になる
     fireEvent.click(screen.getByText("星空のメロディ"));
     await waitFor(() => {
       expect(screen.getByText("▶")).toBeInTheDocument();
-      expect(screen.queryByText("歌詞")).toBeNull();
+      // expand-content-open クラスが除去されたことを確認
+      const expandContent = document.querySelector(".expand-content");
+      expect(expandContent).not.toHaveClass("expand-content-open");
     });
   });
 
