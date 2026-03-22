@@ -801,6 +801,30 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* ===== Keyboard Shortcut Hints ===== */
+.shortcut-hints {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0.6;
+}
+
+.shortcut-hints span {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .shortcut-hints {
+    display: none;
+  }
+}
+
 /* ===== Ripple Effect ===== */
 .ripple-container {
   position: relative;

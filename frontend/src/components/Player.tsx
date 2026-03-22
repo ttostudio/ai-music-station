@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import type { Track } from "../api/types";
 
 interface Props {
@@ -9,6 +9,10 @@ interface Props {
   durationMs?: number;
   audioRef?: React.RefObject<HTMLAudioElement | null>;
   onPlayingChange?: (isPlaying: boolean) => void;
+  volume: number;
+  onVolumeChange: (v: number) => void;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
 }
 
 interface ChannelTheme {
@@ -96,12 +100,13 @@ export function Player({
   elapsedMs = 0,
   durationMs = 0,
   audioRef: externalAudioRef,
-  onPlayingChange,
+  volume,
+  onVolumeChange,
+  isPlaying,
+  onTogglePlay,
 }: Props) {
   const internalAudioRef = useRef<HTMLAudioElement>(null);
   const audioRef = externalAudioRef ?? internalAudioRef;
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.8);
 
   const progress = durationMs > 0 ? Math.min(elapsedMs / durationMs, 1) : 0;
 
@@ -116,31 +121,12 @@ export function Player({
       audioRef.current.load();
       if (isPlaying) {
         audioRef.current.play().catch(() => {
-          setIsPlaying(false);
-          onPlayingChange?.(false);
+          /* handled by parent */
         });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamUrl]);
-
-  const togglePlay = async () => {
-    if (!audioRef.current || !streamUrl) return;
-    try {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-        onPlayingChange?.(false);
-      } else {
-        await audioRef.current.play();
-        setIsPlaying(true);
-        onPlayingChange?.(true);
-      }
-    } catch {
-      setIsPlaying(false);
-      onPlayingChange?.(false);
-    }
-  };
 
   const ringSize = 72;
   const theme = channelName ? getChannelTheme(channelName) : getChannelTheme("");
@@ -168,7 +154,7 @@ export function Player({
             <div className="album-art-center" />
           </div>
           <button
-            onClick={togglePlay}
+            onClick={onTogglePlay}
             disabled={!streamUrl}
             className={`player-button focus-ring ${isPlaying ? "player-button-playing" : ""} ${!streamUrl ? "opacity-50 cursor-not-allowed" : ""}`}
             style={{ position: "absolute", inset: 0, background: isPlaying ? "transparent" : undefined }}
@@ -217,7 +203,7 @@ export function Player({
             fill="currentColor"
             viewBox="0 0 24 24"
             aria-hidden="true"
-            onClick={() => setVolume(volume > 0 ? 0 : 0.8)}
+            onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
           >
             {volume === 0 ? (
               <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
@@ -231,7 +217,7 @@ export function Player({
             max="1"
             step="0.05"
             value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
             className="w-24"
             aria-label="音量"
           />
