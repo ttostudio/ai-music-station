@@ -1,17 +1,28 @@
 import { useState, useEffect, useCallback } from "react";
 import { addReaction, removeReaction, getReaction } from "../api/client";
 
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for non-secure contexts (HTTP)
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function getSessionId(): string {
   const key = "ams_session_id";
   try {
     let id = window.localStorage.getItem(key);
     if (!id) {
-      id = crypto.randomUUID();
+      id = generateId();
       window.localStorage.setItem(key, id);
     }
     return id;
   } catch {
-    return crypto.randomUUID();
+    return generateId();
   }
 }
 
@@ -25,7 +36,7 @@ export function ReactionButton({ trackId }: Props) {
   const [loading, setLoading] = useState(false);
   const [animating, setAnimating] = useState(false);
 
-  const sessionId = getSessionId();
+  const [sessionId] = useState(getSessionId);
 
   const fetchStatus = useCallback(async () => {
     try {

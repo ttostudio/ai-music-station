@@ -68,4 +68,31 @@ describe("ChannelSelector", () => {
     );
     expect(screen.getAllByText("(2件待ち)").length).toBeGreaterThan(0);
   });
+
+  it("hides inactive channels", () => {
+    const channelsWithInactive: Channel[] = [
+      ...mockChannels,
+      {
+        id: "3",
+        slug: "lofi-beats",
+        name: "LoFi Beats",
+        description: "チルなビーツ",
+        is_active: false,
+        queue_depth: 0,
+        total_tracks: 50,
+        stream_url: "/stream/lofi-beats.ogg",
+        now_playing: null,
+      },
+    ];
+    render(
+      <ChannelSelector
+        channels={channelsWithInactive}
+        activeSlug={null}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getAllByText("LoFi ビーツ").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ジャズステーション").length).toBeGreaterThan(0);
+    expect(screen.queryByText("LoFi Beats")).toBeNull();
+  });
 });

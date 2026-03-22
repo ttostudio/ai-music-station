@@ -13,6 +13,7 @@ const mockTrack: Track = {
   music_key: "Am",
   instrumental: true,
   play_count: 3,
+  like_count: 0,
   created_at: "2026-03-21T10:00:00Z",
 };
 
