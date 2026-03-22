@@ -52,8 +52,13 @@ class Channel(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+    content_type: Mapped[str] = mapped_column(
+        String(20), default="music", server_default="music"
+    )
+
     requests: Mapped[List["Request"]] = relationship(back_populates="channel")
     tracks: Mapped[List["Track"]] = relationship(back_populates="channel")
+    podcast_episodes: Mapped[List["PodcastEpisode"]] = relationship(back_populates="channel")
 
 
 class Request(Base):
@@ -170,6 +175,36 @@ class Reaction(Base):
 
     __table_args__ = (
         Index("idx_reactions_track", "track_id"),
+    )
+
+
+class PodcastEpisode(Base):
+    __tablename__ = "podcast_episodes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    channel_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("channels.id"), nullable=False
+    )
+    article_id: Mapped[Optional[str]] = mapped_column(String(255))
+    article_slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    audio_file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
+    episode_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), default="published", server_default="published"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    channel: Mapped["Channel"] = relationship(back_populates="podcast_episodes")
+
+    __table_args__ = (
+        Index("idx_podcast_episodes_channel", "channel_id", "episode_number"),
     )
 
 

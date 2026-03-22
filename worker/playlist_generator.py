@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from worker.models import Track
+from worker.models import PodcastEpisode, Track
 
 logger = logging.getLogger(__name__)
 
@@ -64,3 +64,46 @@ async def generate_weighted_playlist(
         channel_slug, unique_count, len(weighted_entries),
     )
     return unique_count
+
+
+async def generate_podcast_playlist(
+    session: AsyncSession,
+    channel_id,
+    channel_slug: str,
+    tracks_dir: str,
+) -> int:
+    """ポッドキャストエピソードの順序再生プレイリストを生成する。
+
+    エピソード番号順に並べる（シャッフルなし）。
+    戻り値: プレイリストに含まれるエピソード数。
+    """
+    result = await session.execute(
+        select(PodcastEpisode)
+        .where(
+            PodcastEpisode.channel_id == channel_id,
+            PodcastEpisode.status == "published",
+        )
+        .order_by(PodcastEpisode.episode_number.asc())
+    )
+    episodes = result.scalars().all()
+
+    if not episodes:
+        return 0
+
+    entries: list[str] = []
+    for ep in episodes:
+        audio_path = Path(ep.audio_file_path)
+        if audio_path.exists():
+            entries.append(str(audio_path))
+
+    base_dir = Path(tracks_dir)
+    playlist_dir = base_dir / channel_slug
+    playlist_dir.mkdir(parents=True, exist_ok=True)
+    playlist_path = playlist_dir / "playlist.m3u"
+    playlist_path.write_text("\n".join(entries) + "\n", encoding="utf-8")
+
+    logger.info(
+        "ポッドキャスト %s: プレイリスト生成 (%d エピソード)",
+        channel_slug, len(entries),
+    )
+    return len(entries)
