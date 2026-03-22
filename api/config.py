@@ -8,6 +8,7 @@ class APISettings(BaseSettings):
         "postgresql+asyncpg://app:changeme@localhost:5432/ai_music_station"
     )
     debug: bool = False
+    claude_command: str = "claude"
 
     model_config = {"env_prefix": "", "env_file": ".env", "extra": "ignore"}
 

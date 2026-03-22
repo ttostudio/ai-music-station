@@ -12,6 +12,8 @@ services:
       - pgdata:/var/lib/postgresql/data
     expose:
       - "5432"
+    ports:
+      - "5433:5432"  # Host worker needs DB access
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d ai_music_station"]
       interval: 5s
@@ -64,60 +66,21 @@ services:
       timeout: 5s
       retries: 3
 
-  # --- Liquidsoap per channel ---
-  liquidsoap-lofi:
+  # --- Liquidsoap 統合ストリーミング（全チャンネル動的対応） ---
+  liquidsoap:
     build:
       context: ./streaming/liquidsoap
     environment:
-      CHANNEL: lofi
       ICECAST_HOST: icecast
       ICECAST_PORT: "8000"
       ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
       API_BASE_URL: http://api:8000
     volumes:
-      - ./generated_tracks:/tracks:ro
+      - ./generated_tracks:/tracks
     depends_on:
       icecast:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/liquidsoap_healthy || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  liquidsoap-anime:
-    build:
-      context: ./streaming/liquidsoap
-    environment:
-      CHANNEL: anime
-      ICECAST_HOST: icecast
-      ICECAST_PORT: "8000"
-      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
-      API_BASE_URL: http://api:8000
-    volumes:
-      - ./generated_tracks:/tracks:ro
-    depends_on:
-      icecast:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/liquidsoap_healthy || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  liquidsoap-jazz:
-    build:
-      context: ./streaming/liquidsoap
-    environment:
-      CHANNEL: jazz
-      ICECAST_HOST: icecast
-      ICECAST_PORT: "8000"
-      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD}
-      API_BASE_URL: http://api:8000
-    volumes:
-      - ./generated_tracks:/tracks:ro
-    depends_on:
-      icecast:
+      api:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/liquidsoap_healthy || exit 1"]

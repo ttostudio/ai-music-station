@@ -41,6 +41,10 @@ class Channel(Base):
     default_instrumental: Mapped[bool] = mapped_column(Boolean, default=True)
     prompt_template: Mapped[str] = mapped_column(Text, nullable=False)
     vocal_language: Mapped[Optional[str]] = mapped_column(String(10))
+    mood_description: Mapped[Optional[str]] = mapped_column(Text)
+    auto_generate: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    min_stock: Mapped[int] = mapped_column(Integer, default=5, server_default="5")
+    max_stock: Mapped[int] = mapped_column(Integer, default=50, server_default="50")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -64,6 +68,7 @@ class Request(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending"
     )
+    mood: Mapped[Optional[str]] = mapped_column(Text)
     caption: Mapped[Optional[str]] = mapped_column(Text)
     lyrics: Mapped[Optional[str]] = mapped_column(Text)
     bpm: Mapped[Optional[int]] = mapped_column(Integer)
@@ -114,6 +119,8 @@ class Track(Base):
     file_size: Mapped[Optional[int]] = mapped_column(Integer)
     duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
     sample_rate: Mapped[int] = mapped_column(Integer, default=48000)
+    title: Mapped[Optional[str]] = mapped_column(Text)
+    mood: Mapped[Optional[str]] = mapped_column(Text)
     caption: Mapped[str] = mapped_column(Text, nullable=False)
     lyrics: Mapped[Optional[str]] = mapped_column(Text)
     bpm: Mapped[Optional[int]] = mapped_column(Integer)
@@ -123,6 +130,8 @@ class Track(Base):
     cfg_scale: Mapped[Optional[float]] = mapped_column(Float)
     seed: Mapped[Optional[int]] = mapped_column(Integer)
     play_count: Mapped[int] = mapped_column(Integer, default=0)
+    like_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    is_retired: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     last_played_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True)
     )
@@ -137,6 +146,30 @@ class Track(Base):
 
     __table_args__ = (
         Index("idx_tracks_channel", "channel_id", "created_at"),
+    )
+
+
+class Reaction(Base):
+    __tablename__ = "reactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tracks.id"), nullable=False
+    )
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    reaction_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="like"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    track: Mapped["Track"] = relationship()
+
+    __table_args__ = (
+        Index("idx_reactions_track", "track_id"),
     )
 
 

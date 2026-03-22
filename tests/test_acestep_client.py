@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -8,6 +10,7 @@ from worker.acestep_client import (
     GenerationError,
     GenerationParams,
     GenerationTimeoutError,
+    _build_prompt,
 )
 
 
@@ -26,6 +29,57 @@ def default_params():
         key="Am",
         seed=42,
     )
+
+
+def _make_chat_response(audio_b64: str = "ZmFrZS1hdWRpby1kYXRh") -> MagicMock:
+    """Create a mock chat completions response matching ACE-Step's actual format.
+
+    Real format: choices[0].message.audio[0].audio_url.url = "data:audio/mpeg;base64,..."
+    """
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.raise_for_status = MagicMock()
+    resp.json = MagicMock(return_value={
+        "id": "chatcmpl-test",
+        "object": "chat.completion",
+        "model": "ace-step-v1.5",
+        "choices": [{
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "## Metadata\n**Caption:** test",
+                "audio": [{
+                    "type": "audio_url",
+                    "audio_url": {
+                        "url": f"data:audio/mpeg;base64,{audio_b64}",
+                    },
+                }],
+            },
+            "finish_reason": "stop",
+        }],
+        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    })
+    return resp
+
+
+class TestBuildPrompt:
+    def test_basic(self):
+        params = GenerationParams(caption="chill lo-fi")
+        prompt = _build_prompt(params)
+        assert "chill lo-fi" in prompt
+        assert "Instrumental" in prompt
+
+    def test_with_bpm_and_key(self):
+        params = GenerationParams(caption="jazz", bpm=120, key="Dm")
+        prompt = _build_prompt(params)
+        assert "BPM: 120" in prompt
+        assert "Key: Dm" in prompt
+
+    def test_with_lyrics(self):
+        params = GenerationParams(caption="anime", lyrics="[Verse] Hello", instrumental=False)
+        prompt = _build_prompt(params)
+        assert "Lyrics: [Verse] Hello" in prompt
+        assert "Instrumental" not in prompt
 
 
 class TestGenerationParams:
@@ -57,10 +111,7 @@ class TestGenerationParams:
 class TestACEStepClient:
     @pytest.mark.asyncio
     async def test_successful_generation(self, client, default_params):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = b"fake-audio-data"
-        mock_response.raise_for_status = MagicMock()
+        mock_response = _make_chat_response()
 
         with patch("httpx.AsyncClient") as mock_cls:
             mock_http = AsyncMock()
@@ -78,11 +129,11 @@ class TestACEStepClient:
 
             mock_http.post.assert_called_once()
             call_kwargs = mock_http.post.call_args
+            assert "/v1/chat/completions" in call_kwargs.args[0]
             payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
-            assert payload["caption"] == "test lo-fi beat"
-            assert payload["instrumental"] is True
-            assert payload["bpm"] == 80
-            assert payload["seed"] == 42
+            assert payload["model"] == "ace-step-v1.5"
+            assert len(payload["messages"]) == 1
+            assert "test lo-fi beat" in payload["messages"][0]["content"]
 
     @pytest.mark.asyncio
     async def test_timeout_raises_error(self, client, default_params):
@@ -102,10 +153,7 @@ class TestACEStepClient:
         mock_response_503.status_code = 503
         mock_response_503.text = "Service Unavailable"
 
-        mock_response_200 = MagicMock()
-        mock_response_200.status_code = 200
-        mock_response_200.content = b"audio"
-        mock_response_200.raise_for_status = MagicMock()
+        mock_response_200 = _make_chat_response()
 
         with patch("httpx.AsyncClient") as mock_cls:
             mock_http = AsyncMock()
@@ -115,7 +163,7 @@ class TestACEStepClient:
             mock_cls.return_value = mock_http
 
             result = await client.generate(default_params)
-            assert result.audio_data == b"audio"
+            assert result.audio_data == b"fake-audio-data"
             assert mock_http.post.call_count == 2
 
     @pytest.mark.asyncio
@@ -138,11 +186,7 @@ class TestACEStepClient:
     @pytest.mark.asyncio
     async def test_random_seed_when_none(self, client):
         params = GenerationParams(caption="test", seed=None)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = b"audio"
-        mock_response.raise_for_status = MagicMock()
+        mock_response = _make_chat_response()
 
         with patch("httpx.AsyncClient") as mock_cls:
             mock_http = AsyncMock()
@@ -155,28 +199,40 @@ class TestACEStepClient:
             assert isinstance(result.seed, int)
 
     @pytest.mark.asyncio
-    async def test_lyrics_included_in_payload(self, client):
-        params = GenerationParams(
-            caption="anime",
-            lyrics="[Verse] Test lyrics",
-            vocal_language="ja",
-            seed=1,
-        )
-
+    async def test_audio_url_download(self, client, default_params):
+        """Test extraction when response contains http URL instead of data URI."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.content = b"audio"
         mock_response.raise_for_status = MagicMock()
+        mock_response.json = MagicMock(return_value={
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "test",
+                    "audio": [{
+                        "type": "audio_url",
+                        "audio_url": {"url": "http://test/audio.flac"},
+                    }],
+                },
+            }],
+        })
 
-        with patch("httpx.AsyncClient") as mock_cls:
+        with patch("httpx.AsyncClient") as mock_cls, \
+             patch("httpx.Client") as mock_sync_cls:
             mock_http = AsyncMock()
             mock_http.post = AsyncMock(return_value=mock_response)
             mock_http.__aenter__ = AsyncMock(return_value=mock_http)
             mock_http.__aexit__ = AsyncMock(return_value=False)
             mock_cls.return_value = mock_http
 
-            await client.generate(params)
-            call_kwargs = mock_http.post.call_args
-            payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
-            assert payload["lyrics"] == "[Verse] Test lyrics"
-            assert payload["vocal_language"] == "ja"
+            mock_sync = MagicMock()
+            mock_dl_resp = MagicMock()
+            mock_dl_resp.content = b"downloaded-audio"
+            mock_dl_resp.raise_for_status = MagicMock()
+            mock_sync.get = MagicMock(return_value=mock_dl_resp)
+            mock_sync.__enter__ = MagicMock(return_value=mock_sync)
+            mock_sync.__exit__ = MagicMock(return_value=False)
+            mock_sync_cls.return_value = mock_sync
+
+            result = await client.generate(default_params)
+            assert result.audio_data == b"downloaded-audio"

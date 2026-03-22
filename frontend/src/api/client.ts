@@ -1,7 +1,12 @@
 import type {
+  ChannelCreateBody,
+  ChannelDeleteResponse,
+  ChannelFullResponse,
   ChannelListResponse,
   CreateRequestBody,
   NowPlayingResponse,
+  ReactionResponse,
+  ReactionStatusResponse,
   RequestResponse,
   TrackListResponse,
 } from "./types";
@@ -45,5 +50,71 @@ export async function createRequest(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export async function addReaction(
+  trackId: string,
+  sessionId: string,
+): Promise<ReactionResponse> {
+  return fetchJSON<ReactionResponse>(
+    `${BASE_URL}/tracks/${trackId}/reactions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, reaction_type: "like" }),
+    },
+  );
+}
+
+export async function removeReaction(
+  trackId: string,
+  sessionId: string,
+): Promise<ReactionResponse> {
+  return fetchJSON<ReactionResponse>(
+    `${BASE_URL}/tracks/${trackId}/reactions`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    },
+  );
+}
+
+export async function getReaction(
+  trackId: string,
+  sessionId: string,
+): Promise<ReactionStatusResponse> {
+  return fetchJSON<ReactionStatusResponse>(
+    `${BASE_URL}/tracks/${trackId}/reactions?session_id=${encodeURIComponent(sessionId)}`,
+  );
+}
+
+export async function createChannel(
+  body: ChannelCreateBody,
+): Promise<ChannelFullResponse> {
+  return fetchJSON<ChannelFullResponse>(`${BASE_URL}/channels`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateChannel(
+  slug: string,
+  body: ChannelCreateBody,
+): Promise<ChannelFullResponse> {
+  return fetchJSON<ChannelFullResponse>(`${BASE_URL}/channels/${slug}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteChannel(
+  slug: string,
+): Promise<ChannelDeleteResponse> {
+  return fetchJSON<ChannelDeleteResponse>(`${BASE_URL}/channels/${slug}`, {
+    method: "DELETE",
   });
 }

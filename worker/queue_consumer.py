@@ -9,15 +9,26 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from worker.acestep_client import ACEStepClient, GenerationError, GenerationParams
+from worker.auto_generator import run_auto_generation
 from worker.channel_presets import get_preset
 from worker.config import settings
 from worker.models import Channel, Request, Track
+from worker.playlist_generator import generate_weighted_playlist
+from worker.track_retirement import retire_unpopular_tracks
 
 logger = logging.getLogger(__name__)
+
+
+def _split_title_caption(caption: str | None) -> tuple[str | None, str | None]:
+    """キャプションからタイトルを分離する（'title | caption' 形式）"""
+    if caption and " | " in caption:
+        title, rest = caption.split(" | ", 1)
+        return title.strip(), rest.strip()
+    return None, caption
 
 
 class QueueConsumer:
@@ -66,9 +77,11 @@ class QueueConsumer:
         preset = get_preset(channel.slug)
         base_caption = preset.prompt_template if preset else channel.prompt_template
 
-        caption = request.caption or base_caption
-        if request.caption and preset:
-            caption = f"{request.caption}, {preset.prompt_template}"
+        # タイトルプレフィックスを除去してACE-Step用キャプションを取得
+        _, clean_caption = _split_title_caption(request.caption)
+        caption = clean_caption or base_caption
+        if clean_caption and preset:
+            caption = f"{clean_caption}, {preset.prompt_template}"
 
         bpm = request.bpm
         if bpm is None and preset:
@@ -115,6 +128,11 @@ class QueueConsumer:
         full_path.write_bytes(result.audio_data)
         file_size = os.path.getsize(full_path)
 
+        # キャプションからタイトルを抽出
+        title, _ = _split_title_caption(request.caption)
+        if not title:
+            title = request.mood
+
         track = Track(
             id=track_id,
             request_id=request.id,
@@ -123,6 +141,8 @@ class QueueConsumer:
             file_size=file_size,
             duration_ms=result.duration_ms,
             sample_rate=result.sample_rate,
+            title=title,
+            mood=request.mood,
             caption=params.caption,
             lyrics=params.lyrics,
             bpm=params.bpm,
@@ -176,13 +196,88 @@ class QueueConsumer:
                 await self.fail_request(session, request.id, str(e))
                 return True
 
+    async def _get_active_channels(self, session: AsyncSession) -> list[Channel]:
+        """アクティブチャンネル一覧を取得する。"""
+        result = await session.execute(
+            select(Channel).where(Channel.is_active == True)  # noqa: E712
+        )
+        return list(result.scalars().all())
+
+    async def _run_playlist_update(self):
+        """全チャンネルのプレイリストを更新する。"""
+        async with self.session_factory() as session:
+            channels = await self._get_active_channels(session)
+            for ch in channels:
+                # トラック数が5件未満のチャンネルはスキップ
+                count_result = await session.execute(
+                    select(func.count(Track.id)).where(
+                        Track.channel_id == ch.id,
+                        Track.is_retired == False,  # noqa: E712
+                    )
+                )
+                track_count = count_result.scalar() or 0
+                if track_count < 5:
+                    continue
+                await generate_weighted_playlist(
+                    session, ch.id, ch.slug, str(self.tracks_dir),
+                )
+
+    async def _run_track_retirement(self):
+        """全チャンネルの棚卸しを実行する。"""
+        async with self.session_factory() as session:
+            channels = await self._get_active_channels(session)
+            for ch in channels:
+                # トラック数が5件未満のチャンネルはスキップ
+                count_result = await session.execute(
+                    select(func.count(Track.id)).where(
+                        Track.channel_id == ch.id,
+                    )
+                )
+                track_count = count_result.scalar() or 0
+                if track_count < 5:
+                    continue
+                await retire_unpopular_tracks(session, ch.id)
+
     async def run(self):
         logger.info(
             "Worker %s starting poll loop (interval=%.1fs)",
             self.worker_id, settings.poll_interval,
         )
+        playlist_interval = 5 * 60  # 5分
+        retirement_interval = 10 * 60  # 10分
+        auto_gen_interval = 60  # 60秒
+        last_playlist_update = 0.0
+        last_retirement_run = 0.0
+        last_auto_gen_run = 0.0
+
         while True:
             try:
+                now = asyncio.get_event_loop().time()
+
+                # プレイリスト更新（5分間隔）
+                if now - last_playlist_update >= playlist_interval:
+                    try:
+                        await self._run_playlist_update()
+                    except Exception:
+                        logger.exception("プレイリスト更新エラー")
+                    last_playlist_update = now
+
+                # 棚卸し実行（10分間隔）
+                if now - last_retirement_run >= retirement_interval:
+                    try:
+                        await self._run_track_retirement()
+                    except Exception:
+                        logger.exception("棚卸しエラー")
+                    last_retirement_run = now
+
+                # 自動生成（60秒間隔）
+                if now - last_auto_gen_run >= auto_gen_interval:
+                    try:
+                        await run_auto_generation(self.session_factory)
+                    except Exception:
+                        logger.exception("自動生成エラー")
+                    last_auto_gen_run = now
+
                 had_work = await self.poll_once()
                 if not had_work:
                     await asyncio.sleep(settings.poll_interval)

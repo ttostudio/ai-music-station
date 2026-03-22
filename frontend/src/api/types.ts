@@ -27,9 +27,51 @@ export interface ChannelListResponse {
   channels: Channel[];
 }
 
+export interface ChannelCreateBody {
+  slug: string;
+  name: string;
+  description?: string;
+  mood_description?: string | null;
+  default_bpm_min?: number;
+  default_bpm_max?: number;
+  default_duration?: number;
+  default_key?: string | null;
+  default_instrumental?: boolean;
+  prompt_template: string;
+  vocal_language?: string | null;
+  auto_generate?: boolean;
+  min_stock?: number;
+  max_stock?: number;
+}
+
+export interface ChannelFullResponse {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  mood_description: string | null;
+  is_active: boolean;
+  default_bpm_min: number;
+  default_bpm_max: number;
+  default_duration: number;
+  default_key: string | null;
+  default_instrumental: boolean;
+  prompt_template: string;
+  vocal_language: string | null;
+  auto_generate: boolean;
+  min_stock: number;
+  max_stock: number;
+}
+
+export interface ChannelDeleteResponse {
+  ok: boolean;
+  deleted_tracks: number;
+}
+
 export interface CreateRequestBody {
   caption?: string;
   lyrics?: string;
+  mood?: string;
   bpm?: number;
   duration?: number;
   music_key?: string;
@@ -46,12 +88,26 @@ export interface RequestResponse {
 export interface Track {
   id: string;
   caption: string;
+  title?: string;
+  mood?: string;
+  lyrics?: string;
   duration_ms: number | null;
   bpm: number | null;
   music_key: string | null;
   instrumental: boolean | null;
   play_count: number;
+  like_count: number;
   created_at: string;
+}
+
+export interface ReactionResponse {
+  ok: boolean;
+  count: number;
+}
+
+export interface ReactionStatusResponse {
+  count: number;
+  user_reacted: boolean;
 }
 
 export interface NowPlayingResponse {

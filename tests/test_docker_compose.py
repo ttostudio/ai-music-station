@@ -24,11 +24,20 @@ class TestDockerCompose:
         services = compose.get("services", {})
         required = [
             "postgres", "migrate", "api", "icecast",
-            "liquidsoap-lofi", "liquidsoap-anime", "liquidsoap-jazz",
+            "liquidsoap",
             "frontend", "caddy",
         ]
         for svc in required:
             assert svc in services, f"Missing service: {svc}"
+
+    def test_no_per_channel_liquidsoap(self, compose):
+        """チャンネル別Liquidsoapサービスが存在しないことを確認"""
+        services = compose.get("services", {})
+        for name in services:
+            assert not name.startswith("liquidsoap-"), (
+                f"チャンネル別サービス '{name}' が残っています。"
+                "統合 liquidsoap サービスを使用してください。"
+            )
 
     def test_all_services_have_healthchecks(self, compose):
         services = compose.get("services", {})
@@ -62,12 +71,28 @@ class TestDockerCompose:
         assert migrate.get("restart") == "no"
 
     def test_liquidsoap_has_track_volume(self, compose):
-        for channel in ["lofi", "anime", "jazz"]:
-            svc = compose["services"][f"liquidsoap-{channel}"]
-            volumes = svc.get("volumes", [])
-            assert any("generated_tracks" in str(v) for v in volumes), (
-                f"liquidsoap-{channel} missing tracks volume"
-            )
+        """統合liquidsoapサービスがtracksボリュームを持つことを確認"""
+        svc = compose["services"]["liquidsoap"]
+        volumes = svc.get("volumes", [])
+        assert any("generated_tracks" in str(v) for v in volumes), (
+            "liquidsoap missing tracks volume"
+        )
+
+    def test_liquidsoap_depends_on_api(self, compose):
+        """liquidsoapがAPIに依存していることを確認（チャンネル一覧取得のため）"""
+        svc = compose["services"]["liquidsoap"]
+        depends = svc.get("depends_on", {})
+        assert "api" in depends, (
+            "liquidsoap must depend on api for channel discovery"
+        )
+
+    def test_liquidsoap_has_api_base_url(self, compose):
+        """liquidsoapにAPI_BASE_URL環境変数が設定されていることを確認"""
+        svc = compose["services"]["liquidsoap"]
+        env = svc.get("environment", {})
+        assert "API_BASE_URL" in env, (
+            "liquidsoap missing API_BASE_URL environment variable"
+        )
 
 
 class TestEnvExample:

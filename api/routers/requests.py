@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.config import settings
 from api.db import get_session
 from api.schemas import (
     CreateRequestBody,
@@ -14,7 +16,10 @@ from api.schemas import (
     RequestResponse,
     TrackResponse,
 )
+from worker.lyrics_generator import LyricsGenerator
 from worker.models import Channel, Request, Track
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["requests"])
 
@@ -36,10 +41,37 @@ async def create_request(
     if not channel:
         raise HTTPException(status_code=404, detail="チャンネルが見つかりません")
 
+    caption = body.caption
+    lyrics = body.lyrics
+    mood = body.mood
+
+    # mood指定時: claude CLIで歌詞・曲名・キャプションを自動生成
+    if mood:
+        try:
+            generator = LyricsGenerator(
+                claude_command=settings.claude_command,
+            )
+            gen_result = await generator.generate(
+                mood=mood,
+                channel_name=channel.name,
+                channel_description=channel.description,
+            )
+            generated_title = gen_result.title
+            caption = caption or gen_result.caption
+            if generated_title:
+                caption = f"{generated_title} | {caption}"
+            lyrics = lyrics or gen_result.lyrics
+        except Exception:
+            logger.warning(
+                "歌詞自動生成に失敗しました（ユーザー入力を使用）",
+                exc_info=True,
+            )
+
     req = Request(
         channel_id=channel.id,
-        caption=body.caption,
-        lyrics=body.lyrics,
+        mood=mood,
+        caption=caption,
+        lyrics=lyrics,
         bpm=body.bpm,
         duration=body.duration,
         music_key=body.music_key,
@@ -127,6 +159,7 @@ async def list_requests(
                 id=r.id,
                 channel_slug=slug,
                 status=r.status,
+                mood=r.mood,
                 caption=r.caption,
                 lyrics=r.lyrics,
                 bpm=r.bpm,
@@ -192,6 +225,7 @@ async def get_request(
         id=req.id,
         channel_slug=channel.slug,
         status=req.status,
+        mood=req.mood,
         caption=req.caption,
         lyrics=req.lyrics,
         bpm=req.bpm,
