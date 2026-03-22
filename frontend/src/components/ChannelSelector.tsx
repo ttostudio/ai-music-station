@@ -14,6 +14,14 @@ function getChannelGradient(slug: string): string {
   return "channel-gradient-default";
 }
 
+function getChannelIconGradient(slug: string): string {
+  if (slug.includes("lofi") || slug.includes("lo-fi")) return "channel-icon-lofi";
+  if (slug.includes("anime")) return "channel-icon-anime";
+  if (slug.includes("jazz")) return "channel-icon-jazz";
+  if (slug.includes("game")) return "channel-icon-game";
+  return "channel-icon-default";
+}
+
 function getChannelIcon(slug: string): string {
   if (slug.includes("lofi") || slug.includes("lo-fi")) return "🎧";
   if (slug.includes("anime")) return "🎤";
@@ -39,6 +47,7 @@ export function ChannelSelector({ channels, activeSlug, onSelect }: Props) {
       {visibleChannels.map((channel) => {
         const isActive = activeSlug === channel.slug;
         const gradientClass = getChannelGradient(channel.slug);
+        const iconGradientClass = getChannelIconGradient(channel.slug);
 
         return (
           <button
@@ -51,8 +60,8 @@ export function ChannelSelector({ channels, activeSlug, onSelect }: Props) {
             aria-checked={isActive}
             aria-label={`${channel.name}チャンネルを選択`}
           >
-            {/* アイコン */}
-            <div className="channel-card-icon" aria-hidden="true">
+            {/* アイコン with channel gradient */}
+            <div className={`channel-card-icon ${iconGradientClass}`} aria-hidden="true">
               <span>{getChannelIcon(channel.slug)}</span>
             </div>
 

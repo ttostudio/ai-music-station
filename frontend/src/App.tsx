@@ -64,10 +64,19 @@ export default function App() {
 
   const durationMs = nowPlaying?.duration_ms ?? 0;
 
+  // Determine ambient glow class from active channel
+  const ambientClass = activeSlug
+    ? activeSlug.includes("lofi") || activeSlug.includes("lo-fi") ? "ambient-lofi"
+    : activeSlug.includes("anime") ? "ambient-anime"
+    : activeSlug.includes("jazz") ? "ambient-jazz"
+    : activeSlug.includes("game") ? "ambient-game"
+    : ""
+    : "";
+
   return (
     <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--bg-primary)" }}>
-      {/* Ambient background glow */}
-      <div className="ambient-glow" />
+      {/* Channel-aware ambient background glow */}
+      <div className={`ambient-glow ${ambientClass}`} />
 
       <div className="relative z-10">
         {/* Header */}
