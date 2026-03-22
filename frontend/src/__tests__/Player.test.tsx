@@ -32,4 +32,46 @@ describe("Player", () => {
     const btns = screen.getAllByLabelText("再生");
     expect(btns[0]).toBeDisabled();
   });
+
+  it("shows now playing track title", () => {
+    const track = {
+      id: "1",
+      caption: "テストキャプション",
+      title: "夕暮れの散歩道",
+      duration_ms: 180000,
+      bpm: 85,
+      music_key: "Am",
+      instrumental: false,
+      play_count: 3,
+      like_count: 1,
+      created_at: "2026-03-21T10:00:00Z",
+    };
+    render(
+      <Player streamUrl="/stream/anime.ogg" channelName="Anime Songs" nowPlaying={track} />,
+    );
+    expect(screen.getAllByText("夕暮れの散歩道").length).toBeGreaterThan(0);
+  });
+
+  it("shows caption when no title in now playing", () => {
+    const track = {
+      id: "1",
+      caption: "テストキャプション",
+      duration_ms: 180000,
+      bpm: 85,
+      music_key: "Am",
+      instrumental: false,
+      play_count: 3,
+      like_count: 0,
+      created_at: "2026-03-21T10:00:00Z",
+    };
+    render(
+      <Player streamUrl="/stream/anime.ogg" channelName="Anime Songs" nowPlaying={track} />,
+    );
+    expect(screen.getAllByText("テストキャプション").length).toBeGreaterThan(0);
+  });
+
+  it("does not show track info when nowPlaying is null", () => {
+    render(<Player streamUrl="/stream/anime.ogg" channelName="Anime Songs" nowPlaying={null} />);
+    expect(screen.queryByText("夕暮れの散歩道")).toBeNull();
+  });
 });

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import type { Track } from "../api/types";
 
 interface Props {
   streamUrl: string | null;
   channelName: string;
-  activeSlug?: string | null;
+  nowPlaying?: Track | null;
 }
 
 function VisualizerBars({ playing }: { playing: boolean }) {
@@ -26,7 +27,7 @@ function VisualizerBars({ playing }: { playing: boolean }) {
   );
 }
 
-export function Player({ streamUrl, channelName }: Props) {
+export function Player({ streamUrl, channelName, nowPlaying }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
@@ -97,6 +98,11 @@ export function Player({ streamUrl, channelName }: Props) {
           <div className="text-lg font-bold truncate mt-0.5">
             {channelName || "チャンネルを選択してください"}
           </div>
+          {nowPlaying && (
+            <div className="text-sm truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {nowPlaying.title || nowPlaying.caption}
+            </div>
+          )}
         </div>
 
         {/* Visualizer */}
