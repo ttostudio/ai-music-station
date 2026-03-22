@@ -23,6 +23,7 @@ export function ReactionButton({ trackId }: Props) {
   const [liked, setLiked] = useState(false);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [animating, setAnimating] = useState(false);
 
   const sessionId = getSessionId();
 
@@ -43,6 +44,11 @@ export function ReactionButton({ trackId }: Props) {
   const handleClick = async () => {
     if (loading) return;
     setLoading(true);
+    setAnimating(true);
+
+    // Reset animation
+    setTimeout(() => setAnimating(false), 400);
+
     try {
       if (liked) {
         const res = await removeReaction(trackId, sessionId);
@@ -66,14 +72,16 @@ export function ReactionButton({ trackId }: Props) {
       onClick={handleClick}
       disabled={loading}
       aria-label={liked ? "いいね解除" : "いいね"}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
         liked
-          ? "bg-indigo-600 text-white"
-          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-      } disabled:opacity-50`}
+          ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
+          : "bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-white/20"
+      } disabled:opacity-50 ${animating ? "reaction-pop" : ""}`}
     >
-      <span>{liked ? "👍" : "👍"}</span>
-      {count > 0 && <span>{count}</span>}
+      <span className={`text-base ${liked ? "scale-110" : ""} transition-transform`}>👍</span>
+      {count > 0 && (
+        <span className="tabular-nums">{count}</span>
+      )}
     </button>
   );
 }

@@ -1,1 +1,272 @@
 @import "tailwindcss";
+
+/* ===== Dark Theme Color Palette ===== */
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --text-primary: #f0f0f5;
+  --text-secondary: #8b8b9e;
+  --text-muted: #5a5a6e;
+  --accent-primary: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+
+  /* Channel Theme Colors */
+  --channel-lofi: linear-gradient(135deg, #7c3aed, #a855f7);
+  --channel-anime: linear-gradient(135deg, #ec4899, #f472b6);
+  --channel-jazz: linear-gradient(135deg, #d97706, #fbbf24);
+  --channel-game: linear-gradient(135deg, #059669, #34d399);
+  --channel-default: linear-gradient(135deg, #6366f1, #818cf8);
+}
+
+/* ===== Base Styles ===== */
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Glassmorphism Card ===== */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: 1rem;
+}
+
+.glass-card-hover {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.glass-card-hover:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Channel Gradient Backgrounds ===== */
+.channel-gradient-lofi { background: var(--channel-lofi); }
+.channel-gradient-anime { background: var(--channel-anime); }
+.channel-gradient-jazz { background: var(--channel-jazz); }
+.channel-gradient-game { background: var(--channel-game); }
+.channel-gradient-default { background: var(--channel-default); }
+
+/* ===== Glow Effects ===== */
+.glow-accent {
+  box-shadow: 0 0 20px var(--accent-glow), 0 0 60px rgba(99, 102, 241, 0.1);
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+  50% { box-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(99, 102, 241, 0.15); }
+}
+
+/* ===== Audio Visualizer Bars ===== */
+.visualizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 32px;
+}
+
+.visualizer-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to top, var(--accent-primary), #a78bfa);
+  animation: visualizer-bounce var(--duration, 0.8s) ease-in-out infinite alternate;
+}
+
+@keyframes visualizer-bounce {
+  0% { height: 20%; }
+  100% { height: 100%; }
+}
+
+/* ===== Lyrics Scroll Mask ===== */
+.lyrics-mask {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 15%,
+    black 75%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 15%,
+    black 75%,
+    transparent 100%
+  );
+}
+
+/* ===== Reaction Animation ===== */
+.reaction-pop {
+  animation: reaction-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes reaction-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.reaction-float {
+  animation: reaction-float 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes reaction-float {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(1.5); }
+}
+
+/* ===== Slide In Animation ===== */
+.slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Player Progress Glow ===== */
+.progress-glow {
+  position: relative;
+}
+
+.progress-glow::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-primary), #a78bfa, var(--accent-primary));
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  z-index: -1;
+  opacity: 0.5;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== Custom Range Input ===== */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 20px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  margin-top: -5px;
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: transform 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: none;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ===== Scrollbar Styling ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== Form Input Styling ===== */
+.input-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 0.75rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.input-glass:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.input-glass::placeholder {
+  color: var(--text-muted);
+}
+
+/* ===== Background Ambient Glow ===== */
+.ambient-glow {
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    rgba(99, 102, 241, 0.08) 0%,
+    transparent 50%
+  ),
+  radial-gradient(
+    ellipse at 70% 80%,
+    rgba(139, 92, 246, 0.06) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
