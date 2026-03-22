@@ -20,7 +20,7 @@ psutil>=5.9.0
 pytest==8.3.4
 pytest-asyncio==0.25.0
 pytest-cov==6.0.0
-pyyaml==6.0.2
+pyyaml==6.0.3
 
 # Linting
 ruff==0.9.4

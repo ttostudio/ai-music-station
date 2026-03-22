@@ -73,6 +73,23 @@ async def get_pending_request_count(
     return result.scalar() or 0
 
 
+async def get_existing_titles(
+    session: AsyncSession, channel_id: uuid.UUID, limit: int = 50,
+) -> list[str]:
+    """チャンネルの既存トラックタイトル一覧を取得する（重複防止用）。"""
+    result = await session.execute(
+        select(Track.title)
+        .where(
+            Track.channel_id == channel_id,
+            Track.is_retired == False,  # noqa: E712
+            Track.title.isnot(None),
+        )
+        .order_by(Track.created_at.desc())
+        .limit(limit)
+    )
+    return [row[0] for row in result.all()]
+
+
 async def create_auto_request(
     session: AsyncSession, channel: Channel,
 ) -> Request:
@@ -83,11 +100,15 @@ async def create_auto_request(
     if profile.prompt_hint:
         mood = f"{mood} ({profile.prompt_hint})"
 
+    # 既存タイトルを取得して重複を防止
+    existing_titles = await get_existing_titles(session, channel.id)
+
     generator = LyricsGenerator()
     lyrics_result = await generator.generate(
         mood=mood,
         channel_name=channel.name,
         channel_description=channel.description,
+        existing_titles=existing_titles,
     )
 
     caption = lyrics_result.caption
@@ -154,7 +175,8 @@ async def run_auto_generation(session_factory) -> int:
                     "channel=%s: 棚卸し処理失敗", channel.slug,
                 )
 
-        # 自動生成: auto_generate が有効なチャンネルのみ
+        # 自動生成: auto_generate が有効なチャンネルの在庫不足率を計算
+        channel_stocks = []
         for channel in all_channels:
             if not channel.auto_generate:
                 continue
@@ -168,7 +190,15 @@ async def run_auto_generation(session_factory) -> int:
                 continue
 
             stock = await get_active_stock(session, channel.id)
-            if stock >= channel.min_stock:
+            deficit = channel.min_stock - stock  # 正の値 = 不足
+            channel_stocks.append((channel, stock, deficit))
+
+        # 不足が多い順にソート（均等化のため）
+        channel_stocks.sort(key=lambda x: x[2], reverse=True)
+
+        # 1サイクルで最大1曲のみ生成（ラウンドロビン）
+        for channel, stock, deficit in channel_stocks:
+            if deficit <= 0:
                 logger.debug(
                     "channel=%s: 在庫十分(%d/%d)、スキップ",
                     channel.slug, stock, channel.min_stock,
@@ -176,12 +206,13 @@ async def run_auto_generation(session_factory) -> int:
                 continue
 
             logger.info(
-                "channel=%s: 在庫不足(%d/%d)、自動生成開始",
-                channel.slug, stock, channel.min_stock,
+                "channel=%s: 在庫不足(%d/%d, 不足%d曲)、自動生成開始",
+                channel.slug, stock, channel.min_stock, deficit,
             )
             try:
                 await create_auto_request(session, channel)
                 created += 1
+                break  # 1サイクル1曲で次のサイクルに回す
             except Exception:
                 logger.exception(
                     "channel=%s: 自動リクエスト作成失敗", channel.slug,
