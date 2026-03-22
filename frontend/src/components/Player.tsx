@@ -4,7 +4,6 @@ import type { Track } from "../api/types";
 interface Props {
   streamUrl: string | null;
   channelName: string;
-  activeSlug?: string | null;
   nowPlaying?: Track | null;
 }
 

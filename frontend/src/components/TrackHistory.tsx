@@ -34,8 +34,8 @@ export function TrackHistory({ channelSlug }: Props) {
         return (
           <div key={track.id} className="glass-card-hover overflow-hidden">
             <div
-              className="px-4 py-3 text-sm flex items-center gap-3 cursor-pointer"
-              onClick={() => setExpandedId(isExpanded ? null : track.id)}
+              className={`px-4 py-3 text-sm flex items-center gap-3 ${track.lyrics ? "cursor-pointer" : ""}`}
+              onClick={() => track.lyrics && setExpandedId(isExpanded ? null : track.id)}
             >
               {track.lyrics && (
                 <span className="shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>

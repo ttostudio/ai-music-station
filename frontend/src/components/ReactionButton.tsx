@@ -36,7 +36,7 @@ export function ReactionButton({ trackId }: Props) {
   const [loading, setLoading] = useState(false);
   const [animating, setAnimating] = useState(false);
 
-  const sessionId = getSessionId();
+  const [sessionId] = useState(getSessionId);
 
   const fetchStatus = useCallback(async () => {
     try {
