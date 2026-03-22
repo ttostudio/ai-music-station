@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChannelManager } from "./components/ChannelManager";
 import { ChannelSelector } from "./components/ChannelSelector";
 import { MediaDisplay } from "./components/MediaDisplay";
@@ -9,12 +9,15 @@ import { TrackHistory } from "./components/TrackHistory";
 import { TrackTitle } from "./components/TrackTitle";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 export default function App() {
   const { channels, loading, error } = useChannels();
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showManager, setShowManager] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+  const prevVolumeRef = useRef(0.8);
   const nowPlaying = useNowPlaying(activeSlug);
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
@@ -22,6 +25,56 @@ export default function App() {
 
   // Shared audioRef — passed to Player and MediaDisplay (AudioVisualizer)
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const togglePlay = useCallback(async () => {
+    if (!audioRef.current || !streamUrl) return;
+    try {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } catch {
+      setIsPlaying(false);
+    }
+  }, [isPlaying, streamUrl]);
+
+  const handleVolumeUp = useCallback(() => {
+    setVolume((v) => Math.min(1, +(v + 0.05).toFixed(2)));
+  }, []);
+
+  const handleVolumeDown = useCallback(() => {
+    setVolume((v) => Math.max(0, +(v - 0.05).toFixed(2)));
+  }, []);
+
+  const handleMute = useCallback(() => {
+    setVolume((v) => {
+      if (v > 0) {
+        prevVolumeRef.current = v;
+        return 0;
+      }
+      return prevVolumeRef.current || 0.8;
+    });
+  }, []);
+
+  const handleSelectChannel = useCallback(
+    (index: number) => {
+      if (index < channels.length) {
+        setActiveSlug(channels[index].slug);
+      }
+    },
+    [channels],
+  );
+
+  useKeyboardShortcuts({
+    onTogglePlay: togglePlay,
+    onVolumeUp: handleVolumeUp,
+    onVolumeDown: handleVolumeDown,
+    onMute: handleMute,
+    onSelectChannel: handleSelectChannel,
+  });
 
   // Track elapsed playback time for lyrics sync and ProgressRing
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -119,7 +172,10 @@ export default function App() {
                 elapsedMs={elapsedMs}
                 durationMs={durationMs}
                 audioRef={audioRef}
-                onPlayingChange={setIsPlaying}
+                volume={volume}
+                onVolumeChange={setVolume}
+                isPlaying={isPlaying}
+                onTogglePlay={togglePlay}
               />
 
               {activeSlug && (
@@ -131,8 +187,14 @@ export default function App() {
                 </div>
               )}
 
-              <footer className="text-center text-xs pt-4 pb-2" style={{ color: "var(--text-muted)" }}>
-                AI Music Station &mdash; ACE-Step v1.5 搭載
+              <footer className="text-center text-xs pt-4 pb-2 space-y-1" style={{ color: "var(--text-muted)" }}>
+                <div className="shortcut-hints">
+                  <span>Space 再生/停止</span>
+                  <span>M ミュート</span>
+                  <span>&uarr;&darr; 音量</span>
+                  <span>1-9 CH切替</span>
+                </div>
+                <div>AI Music Station &mdash; ACE-Step v1.5 搭載</div>
               </footer>
             </aside>
 

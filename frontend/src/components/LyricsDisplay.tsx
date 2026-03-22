@@ -9,7 +9,7 @@ interface Props {
   lyrics: string;
   elapsedMs: number;
   durationMs: number;
-  mode?: "default" | "karaoke-overlay";
+  mode?: "karaoke-overlay" | "scroll-panel";
   channelSlug?: string | null;
 }
 
@@ -45,20 +45,11 @@ function getAllLines(lyrics: string): string[] {
     .filter((l) => !l.match(/^\[.+\]$/));
 }
 
-function getChannelGradient(slug: string | null | undefined): string {
-  if (!slug) return "linear-gradient(135deg, #6366f1, #818cf8)";
-  if (slug.includes("lofi") || slug.includes("lo-fi")) return "linear-gradient(135deg, #7c3aed, #a855f7)";
-  if (slug.includes("anime")) return "linear-gradient(135deg, #ec4899, #f472b6)";
-  if (slug.includes("jazz")) return "linear-gradient(135deg, #d97706, #fbbf24)";
-  if (slug.includes("game")) return "linear-gradient(135deg, #059669, #34d399)";
-  return "linear-gradient(135deg, #6366f1, #818cf8)";
-}
-
 export function LyricsDisplay({
   lyrics,
   elapsedMs,
   durationMs,
-  mode = "default",
+  mode = "karaoke-overlay",
   channelSlug,
 }: Props) {
   if (mode === "karaoke-overlay") {
@@ -73,7 +64,7 @@ export function LyricsDisplay({
   }
 
   return (
-    <DefaultLyrics
+    <ScrollPanel
       lyrics={lyrics}
       elapsedMs={elapsedMs}
       durationMs={durationMs}
@@ -81,91 +72,7 @@ export function LyricsDisplay({
   );
 }
 
-// ===== Default mode (既存の動作) =====
-
-function DefaultLyrics({
-  lyrics,
-  elapsedMs,
-  durationMs,
-}: {
-  lyrics: string;
-  elapsedMs: number;
-  durationMs: number;
-}) {
-  const sections = useMemo(() => parseLyrics(lyrics), [lyrics]);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  const totalLines = sections.reduce(
-    (sum, s) => sum + (s.header ? 1 : 0) + s.lines.length,
-    0,
-  );
-
-  const progress = durationMs > 0 ? Math.min(elapsedMs / durationMs, 1) : 0;
-  const currentLineIndex = Math.floor(progress * totalLines);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const content = contentRef.current;
-    if (!container || !content) return;
-
-    const scrollableHeight = content.scrollHeight - container.clientHeight;
-    if (scrollableHeight <= 0) return;
-
-    const targetScroll = progress * scrollableHeight;
-    container.scrollTo({ top: targetScroll, behavior: "smooth" });
-  }, [progress]);
-
-  if (sections.length === 0) return null;
-
-  let lineCounter = 0;
-
-  return (
-    <div
-      ref={containerRef}
-      className="glass-card p-5 max-h-96 overflow-y-auto"
-    >
-      <div className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--text-muted)" }}>歌詞</div>
-      <div ref={contentRef} className="space-y-4">
-        {sections.map((section, si) => {
-          const sectionStartLine = lineCounter;
-          const sectionLineCount =
-            (section.header ? 1 : 0) + section.lines.length;
-          lineCounter += sectionLineCount;
-          const sectionEndLine = lineCounter;
-
-          const isActiveSection =
-            currentLineIndex >= sectionStartLine &&
-            currentLineIndex < sectionEndLine;
-
-          return (
-            <div
-              key={si}
-              style={{
-                transition: "opacity var(--transition-slow) var(--ease-smooth), transform var(--transition-slow) var(--ease-smooth)",
-                opacity: isActiveSection ? 1 : 0.4,
-                transform: isActiveSection ? "scale(1)" : "scale(0.98)",
-              }}
-            >
-              {section.header && (
-                <div className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1.5">
-                  {section.header}
-                </div>
-              )}
-              {section.lines.map((line, li) => (
-                <p key={li} className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
-                  {line}
-                </p>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ===== Karaoke overlay mode =====
+// ===== Karaoke overlay mode (Pattern B) =====
 
 function KaraokeOverlay({
   lyrics,
@@ -198,7 +105,8 @@ function KaraokeOverlay({
 
   if (lines.length === 0) return null;
 
-  const gradient = getChannelGradient(channelSlug);
+  // channelSlug is retained for potential future use (e.g. themed glow color)
+  void channelSlug;
 
   return (
     <div
@@ -218,9 +126,13 @@ function KaraokeOverlay({
           let opacity = 1;
           let fontSize = "1rem";
           let color = "var(--text-primary)";
+          let textShadow: string | undefined;
+          let extraClass = "";
 
           if (isActive) {
             fontSize = "1.15rem";
+            color = "#FFD700";
+            textShadow = "0 0 8px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8)";
           } else if (isPastNear) {
             opacity = 0.4;
             fontSize = "0.95rem";
@@ -231,6 +143,7 @@ function KaraokeOverlay({
             color = "var(--text-muted)";
           } else if (isFutureNear) {
             opacity = 0.75;
+            extraClass = "karaoke-next-line";
           } else if (isFuture) {
             opacity = 0.5;
             fontSize = "0.9rem";
@@ -241,15 +154,13 @@ function KaraokeOverlay({
             <div
               key={i}
               ref={isActive ? activeLineRef : undefined}
-              className={`karaoke-line ${isActive ? "karaoke-line-active" : ""}`}
+              className={`karaoke-line ${isActive ? "karaoke-line-active" : ""} ${extraClass}`.trim()}
               style={{
                 opacity,
                 fontSize,
-                color: isActive ? "transparent" : color,
+                color,
                 fontWeight: isActive ? 700 : 400,
-                background: isActive ? gradient : undefined,
-                backgroundClip: isActive ? "text" : undefined,
-                WebkitBackgroundClip: isActive ? "text" : undefined,
+                textShadow,
               }}
             >
               {line}
@@ -257,6 +168,127 @@ function KaraokeOverlay({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ===== Scroll panel mode (Pattern A) =====
+
+function ScrollPanel({
+  lyrics,
+  elapsedMs,
+  durationMs,
+}: {
+  lyrics: string;
+  elapsedMs: number;
+  durationMs: number;
+}) {
+  const lines = useMemo(() => getAllLines(lyrics), [lyrics]);
+  const sections = useMemo(() => parseLyrics(lyrics), [lyrics]);
+  const activeLineRef = useRef<HTMLDivElement>(null);
+
+  const activeIndex =
+    durationMs > 0 && lines.length > 0
+      ? Math.min(
+          Math.floor(elapsedMs / (durationMs / lines.length)),
+          lines.length - 1
+        )
+      : 0;
+
+  useEffect(() => {
+    activeLineRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [activeIndex]);
+
+  if (lines.length === 0) return null;
+
+  // Build flat item list: headers + lines with flat line index
+  let lineCounter = 0;
+  const items: Array<
+    | { type: "header"; content: string }
+    | { type: "line"; content: string; lineIndex: number }
+  > = [];
+
+  for (const section of sections) {
+    if (section.header) {
+      items.push({ type: "header", content: section.header });
+    }
+    for (const line of section.lines) {
+      items.push({ type: "line", content: line, lineIndex: lineCounter++ });
+    }
+  }
+
+  return (
+    <div className="lyrics-panel" role="log" aria-live="polite" aria-label="歌詞">
+      <div
+        className="text-xs uppercase tracking-widest mb-2 px-1"
+        style={{ color: "var(--text-muted)" }}
+      >
+        LYRICS
+      </div>
+      {items.map((item, i) => {
+        if (item.type === "header") {
+          return (
+            <div
+              key={i}
+              className="text-xs font-semibold uppercase tracking-wider mt-2 mb-1 px-1"
+              style={{ color: "var(--text-muted)", opacity: 0.7 }}
+            >
+              {item.content}
+            </div>
+          );
+        }
+
+        const diff = item.lineIndex - activeIndex;
+        let opacity = 1;
+        let fontSize = "1rem";
+        let fontWeight = 400;
+        let color = "var(--text-primary)";
+        let textShadow: string | undefined;
+
+        if (diff === 0) {
+          fontWeight = 700;
+          color = "#FFD700";
+          textShadow = "0 0 12px rgba(255,215,0,0.6)";
+        } else if (diff === -1) {
+          opacity = 0.45;
+          fontSize = "0.90rem";
+          color = "var(--text-secondary)";
+        } else if (diff < -1) {
+          opacity = 0.25;
+          fontSize = "0.80rem";
+          color = "var(--text-muted)";
+        } else if (diff === 1) {
+          opacity = 0.65;
+          fontSize = "0.90rem";
+        } else {
+          opacity = 0.45;
+          fontSize = "0.85rem";
+          color = "var(--text-secondary)";
+        }
+
+        return (
+          <div
+            key={i}
+            ref={diff === 0 ? activeLineRef : undefined}
+            style={{
+              opacity,
+              fontSize,
+              fontWeight,
+              color,
+              textShadow,
+              lineHeight: 1.6,
+              padding: "0.1rem 0.25rem",
+              transition:
+                "opacity var(--transition-normal) var(--ease-smooth), color var(--transition-normal) var(--ease-smooth)",
+            }}
+          >
+            {item.content}
+          </div>
+        );
+      })}
     </div>
   );
 }
