@@ -30,6 +30,7 @@ export function TrackHistory({ channelSlug, nowPlayingId }: Props) {
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>最近のトラック</div>
+      <div className="space-y-2 track-list-animated">
       {tracks.map((track, idx) => {
         const isExpanded = expandedId === track.id;
         const isNowPlaying = nowPlayingId === track.id;
@@ -63,8 +64,8 @@ export function TrackHistory({ channelSlug, nowPlayingId }: Props) {
                 </span>
               )}
               {!isNowPlaying && track.lyrics && (
-                <span className="shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>
-                  {isExpanded ? "▼" : "▶"}
+                <span className={`shrink-0 text-xs expand-arrow ${isExpanded ? "expand-arrow-open" : ""}`} style={{ color: "var(--text-muted)" }}>
+                  ▶
                 </span>
               )}
               <span className={`truncate flex-1 ${isNowPlaying ? "font-semibold text-indigo-300" : ""}`}>
@@ -89,6 +90,7 @@ export function TrackHistory({ channelSlug, nowPlayingId }: Props) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
