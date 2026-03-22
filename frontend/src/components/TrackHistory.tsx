@@ -83,7 +83,7 @@ export function TrackHistory({ channelSlug, nowPlayingId }: Props) {
             {track.lyrics && (
               <div className={`expand-content ${isExpanded ? "expand-content-open" : ""}`}>
                 <div className="px-4 pb-3">
-                  <LyricsDisplay lyrics={track.lyrics} elapsedMs={0} durationMs={0} />
+                  <LyricsDisplay lyrics={track.lyrics} elapsedMs={0} durationMs={0} mode="scroll-panel" />
                 </div>
               </div>
             )}

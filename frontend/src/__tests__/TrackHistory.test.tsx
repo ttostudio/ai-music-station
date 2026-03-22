@@ -81,7 +81,7 @@ describe("TrackHistory", () => {
       // Arrow rotates via CSS class instead of changing character
       const arrow = screen.getByText("▶");
       expect(arrow).toHaveClass("expand-arrow-open");
-      expect(screen.getByText("歌詞")).toBeInTheDocument();
+      expect(screen.getByText("LYRICS")).toBeInTheDocument();
     });
   });
 

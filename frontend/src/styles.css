@@ -681,6 +681,87 @@ input[type="range"]::-moz-range-thumb {
   padding: 0.25rem 0.75rem;
 }
 
+.karaoke-next-line {
+  opacity: 0.4;
+}
+
+/* ===== Lyrics Mode Toggle ===== */
+.lyrics-mode-toggle {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+}
+
+.lyrics-mode-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-glass);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.lyrics-mode-btn-active {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-glow);
+  color: var(--text-primary);
+}
+
+/* ===== Pattern A: Lyrics Panel ===== */
+.media-display-panel-mode {
+  display: flex;
+  flex-direction: column;
+}
+
+.media-visualizer-area {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.lyrics-panel {
+  max-height: 40%;
+  overflow-y: auto;
+  padding: 0.75rem 1rem 1rem;
+  scrollbar-width: thin;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-glass);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%, black 10%, black 90%, transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%, black 10%, black 90%, transparent 100%
+  );
+}
+
+@media (max-width: 767px) {
+  .lyrics-panel {
+    max-height: 120px;
+  }
+  .lyrics-mode-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+}
+
 /* ===== Focus ring ===== */
 .focus-ring:focus-visible {
   outline: 2px solid var(--accent-primary);
