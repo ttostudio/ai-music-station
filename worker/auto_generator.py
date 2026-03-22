@@ -169,6 +169,7 @@ async def run_auto_generation(session_factory) -> int:
                     await generate_weighted_playlist(
                         session, channel.id, channel.slug,
                         settings.generated_tracks_dir,
+                        playlist_tracks_dir=settings.liquidsoap_tracks_dir,
                     )
             except Exception:
                 logger.exception(
