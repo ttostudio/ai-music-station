@@ -15,9 +15,11 @@ function getChannelGradient(slug: string): string {
 }
 
 export function ChannelSelector({ channels, activeSlug, onSelect }: Props) {
+  const visibleChannels = channels.filter((c) => c.is_active);
+
   return (
     <div className="flex gap-3 flex-wrap slide-up">
-      {channels.map((channel) => {
+      {visibleChannels.map((channel) => {
         const isActive = activeSlug === channel.slug;
         const gradientClass = getChannelGradient(channel.slug);
 
