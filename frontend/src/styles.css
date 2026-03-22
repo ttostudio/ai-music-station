@@ -720,6 +720,145 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* ===== Ripple Effect ===== */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-container .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0);
+  animation: ripple-expand 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes ripple-expand {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ===== Track Item Enhanced Hover ===== */
+@media (hover: hover) {
+  .track-item:hover {
+    background: var(--bg-card-hover);
+    transform: translateX(4px);
+  }
+}
+
+.track-item {
+  transition: background-color var(--transition-normal) var(--ease-smooth),
+              box-shadow var(--transition-normal) var(--ease-smooth),
+              transform var(--transition-normal) var(--ease-smooth);
+}
+
+/* ===== Track Item Stagger Entrance ===== */
+.track-list-animated > * {
+  opacity: 0;
+  animation: fade-in-up var(--transition-normal) var(--ease-smooth) forwards;
+}
+
+.track-list-animated > *:nth-child(1) { animation-delay: 0ms; }
+.track-list-animated > *:nth-child(2) { animation-delay: 40ms; }
+.track-list-animated > *:nth-child(3) { animation-delay: 80ms; }
+.track-list-animated > *:nth-child(4) { animation-delay: 120ms; }
+.track-list-animated > *:nth-child(5) { animation-delay: 160ms; }
+.track-list-animated > *:nth-child(6) { animation-delay: 200ms; }
+.track-list-animated > *:nth-child(7) { animation-delay: 240ms; }
+.track-list-animated > *:nth-child(8) { animation-delay: 280ms; }
+.track-list-animated > *:nth-child(9) { animation-delay: 320ms; }
+.track-list-animated > *:nth-child(10) { animation-delay: 360ms; }
+
+/* ===== Album Art Visual ===== */
+.album-art {
+  position: relative;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.album-art-inner {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.album-art-visual {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+.album-art-playing .album-art-visual {
+  animation: album-rotate 8s linear infinite;
+}
+
+@keyframes album-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.album-art-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* ===== Progress Ring Glow ===== */
+.progress-ring-glow {
+  filter: drop-shadow(0 0 6px var(--ring-fill-color));
+}
+
+.progress-ring-glow-playing {
+  filter: drop-shadow(0 0 8px var(--ring-fill-color)) drop-shadow(0 0 16px var(--accent-glow));
+}
+
+/* ===== Player Playing State ===== */
+.player-card-playing {
+  box-shadow: 0 0 24px var(--accent-glow), 0 0 64px rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+/* ===== Volume Icon Hover ===== */
+@media (hover: hover) {
+  .volume-icon-interactive:hover {
+    color: var(--text-primary) !important;
+    transform: scale(1.1);
+  }
+}
+
+.volume-icon-interactive {
+  transition: color var(--transition-fast) var(--ease-smooth),
+              transform var(--transition-fast) var(--ease-smooth);
+  cursor: pointer;
+}
+
+/* ===== Expand Arrow Rotation ===== */
+.expand-arrow {
+  display: inline-block;
+  transition: transform var(--transition-normal) var(--ease-smooth);
+}
+
+.expand-arrow-open {
+  transform: rotate(90deg);
+}
+
 /* ===== prefers-reduced-motion ===== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
