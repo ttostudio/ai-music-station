@@ -96,6 +96,7 @@ export default function App() {
           streamUrl={streamUrl}
           channelName={activeChannel?.name ?? ""}
           activeSlug={activeSlug}
+          nowPlaying={nowPlaying}
         />
 
         {activeSlug && (
