@@ -62,14 +62,12 @@ export function ChannelManager({ onClose }: ChannelManagerProps) {
   }
 
   async function handleEdit(slug: string) {
-    // Fetch full channel details via the detail endpoint
     const res = await fetch(`/api/channels/${slug}`);
     if (!res.ok) {
       setMessage("チャンネル情報の取得に失敗しました");
       return;
     }
     const detail = await res.json();
-    // Map detail to ChannelFullResponse shape (detail endpoint may not have all fields)
     setEditingChannel({
       id: detail.id,
       slug: detail.slug,
@@ -116,23 +114,23 @@ export function ChannelManager({ onClose }: ChannelManagerProps) {
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+    <div className="glass-card p-5 space-y-4 slide-up">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">チャンネル管理</h2>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white text-lg"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
         >
           ✕
         </button>
       </div>
 
       {message && (
-        <div className="bg-gray-700 text-green-300 px-3 py-2 rounded text-sm">
-          {message}
+        <div className="px-4 py-2.5 rounded-lg text-sm bg-green-500/10 border border-green-500/20 text-green-400 flex items-center justify-between">
+          <span>{message}</span>
           <button
             onClick={() => setMessage(null)}
-            className="ml-2 text-gray-400 hover:text-white"
+            className="ml-2 text-green-400/60 hover:text-green-400"
           >
             ✕
           </button>
@@ -143,49 +141,49 @@ export function ChannelManager({ onClose }: ChannelManagerProps) {
         <>
           <button
             onClick={() => setMode("create")}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/25"
           >
             新規チャンネル作成
           </button>
 
           {loading ? (
-            <p className="text-gray-400">読み込み中...</p>
+            <p style={{ color: 'var(--text-secondary)' }}>読み込み中...</p>
           ) : channels.length === 0 ? (
-            <p className="text-gray-400">チャンネルがありません</p>
+            <p style={{ color: 'var(--text-secondary)' }}>チャンネルがありません</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-gray-400 border-b border-gray-700">
-                  <tr>
-                    <th className="py-2 px-2">名前</th>
-                    <th className="py-2 px-2">スラッグ</th>
-                    <th className="py-2 px-2">トラック数</th>
-                    <th className="py-2 px-2">待ち</th>
-                    <th className="py-2 px-2">操作</th>
+                <thead className="border-b border-white/10">
+                  <tr style={{ color: 'var(--text-secondary)' }}>
+                    <th className="py-3 px-2 font-medium">名前</th>
+                    <th className="py-3 px-2 font-medium">スラッグ</th>
+                    <th className="py-3 px-2 font-medium">トラック数</th>
+                    <th className="py-3 px-2 font-medium">待ち</th>
+                    <th className="py-3 px-2 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {channels.map((ch) => (
                     <tr
                       key={ch.slug}
-                      className="border-b border-gray-700 text-gray-200"
+                      className="border-b border-white/5 text-gray-200 hover:bg-white/5 transition-colors"
                     >
-                      <td className="py-2 px-2">{ch.name}</td>
-                      <td className="py-2 px-2 font-mono text-gray-400">
+                      <td className="py-3 px-2">{ch.name}</td>
+                      <td className="py-3 px-2 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
                         {ch.slug}
                       </td>
-                      <td className="py-2 px-2">{ch.total_tracks}</td>
-                      <td className="py-2 px-2">{ch.queue_depth}</td>
-                      <td className="py-2 px-2 space-x-2">
+                      <td className="py-3 px-2">{ch.total_tracks}</td>
+                      <td className="py-3 px-2">{ch.queue_depth}</td>
+                      <td className="py-3 px-2 space-x-3">
                         <button
                           onClick={() => handleEdit(ch.slug)}
-                          className="text-blue-400 hover:text-blue-300"
+                          className="text-indigo-400 hover:text-indigo-300 transition-colors"
                         >
                           編集
                         </button>
                         <button
                           onClick={() => setDeleteTarget(ch.slug)}
-                          className="text-red-400 hover:text-red-300"
+                          className="text-red-400 hover:text-red-300 transition-colors"
                         >
                           削除
                         </button>

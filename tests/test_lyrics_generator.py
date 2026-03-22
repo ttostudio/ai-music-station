@@ -170,3 +170,49 @@ class TestLyricsGenerator:
         assert "Jazz Night" in prompt_text
         assert "夜のジャズ" in prompt_text
         assert "テスト" in prompt_text
+
+    @pytest.mark.asyncio
+    async def test_existing_titles_included_in_prompt(self, lyrics_json):
+        """既存タイトルがプロンプトに含まれることを確認"""
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (
+            _make_cli_output(lyrics_json), b"",
+        )
+        mock_proc.returncode = 0
+
+        with patch("worker.lyrics_generator.asyncio.create_subprocess_exec",
+                    return_value=mock_proc) as mock_exec:
+            generator = LyricsGenerator()
+            await generator.generate(
+                mood="テスト",
+                channel_name="Jazz Night",
+                channel_description="夜のジャズ",
+                existing_titles=["夜風のささやき", "月明かりのワルツ"],
+            )
+
+        call_args = mock_exec.call_args[0]
+        prompt_text = call_args[2]  # claude -p <prompt>
+        assert "夜風のささやき" in prompt_text
+        assert "月明かりのワルツ" in prompt_text
+        assert "ユニークなタイトル" in prompt_text
+
+    @pytest.mark.asyncio
+    async def test_no_existing_titles_section_when_empty(self, lyrics_json):
+        """既存タイトルがない場合はプロンプトに重複防止セクションが含まれない"""
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (
+            _make_cli_output(lyrics_json), b"",
+        )
+        mock_proc.returncode = 0
+
+        with patch("worker.lyrics_generator.asyncio.create_subprocess_exec",
+                    return_value=mock_proc) as mock_exec:
+            generator = LyricsGenerator()
+            await generator.generate(
+                mood="テスト",
+                channel_name="Jazz Night",
+            )
+
+        call_args = mock_exec.call_args[0]
+        prompt_text = call_args[2]
+        assert "ユニークなタイトル" not in prompt_text
