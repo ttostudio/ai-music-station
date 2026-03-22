@@ -69,10 +69,10 @@ export function LyricsDisplay({ lyrics, elapsedMs, durationMs }: Props) {
   return (
     <div
       ref={containerRef}
-      className="bg-gray-800 rounded-lg p-4 max-h-64 overflow-hidden"
+      className="glass-card p-5 max-h-72 overflow-hidden lyrics-mask"
     >
-      <div className="text-xs text-gray-500 mb-2">歌詞</div>
-      <div ref={contentRef} className="space-y-3">
+      <div className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>歌詞</div>
+      <div ref={contentRef} className="space-y-4">
         {sections.map((section, si) => {
           const sectionStartLine = lineCounter;
           const sectionLineCount =
@@ -87,15 +87,19 @@ export function LyricsDisplay({ lyrics, elapsedMs, durationMs }: Props) {
           return (
             <div
               key={si}
-              className={`transition-opacity duration-500 ${isActiveSection ? "opacity-100" : "opacity-50"}`}
+              className={`transition-all duration-700 ${
+                isActiveSection
+                  ? "opacity-100 scale-100"
+                  : "opacity-40 scale-[0.98]"
+              }`}
             >
               {section.header && (
-                <div className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">
+                <div className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1.5">
                   {section.header}
                 </div>
               )}
               {section.lines.map((line, li) => (
-                <p key={li} className="text-sm text-gray-300 leading-relaxed">
+                <p key={li} className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
                   {line}
                 </p>
               ))}
