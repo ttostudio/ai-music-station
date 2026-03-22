@@ -150,3 +150,167 @@ class TestGenerateWeightedPlaylist:
         lines = [line for line in content.strip().split("\n") if line]
         assert count == 1
         assert all("track0.flac" in line for line in lines)
+
+
+class TestPlaylistGeneratorPathFix:
+    """FR-110: Liquidsoap コンテナパス修正のテスト (R-01〜R-05)"""
+
+    def _make_session(self, tracks):
+        from unittest.mock import AsyncMock
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=FakeExecuteResult(tracks))
+        return session
+
+    @pytest.mark.asyncio
+    async def test_r01_absolute_path_in_playlist(self, tmp_path):
+        """R-01: playlist_tracks_dir 指定時、M3Uエントリが絶対パスであること。"""
+        channel_id = uuid.uuid4()
+        channel_slug = "egusugi"
+        tracks_dir = str(tmp_path / "tracks")
+        playlist_tracks_dir = "/tracks"
+
+        ch_dir = tmp_path / "tracks" / channel_slug
+        ch_dir.mkdir(parents=True)
+        (ch_dir / "song.flac").write_bytes(b"fake")
+
+        tracks = [_make_track(channel_id, f"{channel_slug}/song.flac", like_count=1)]
+        session = self._make_session(tracks)
+
+        await generate_weighted_playlist(
+            session, channel_id, channel_slug, tracks_dir,
+            playlist_tracks_dir=playlist_tracks_dir,
+        )
+
+        playlist_path = ch_dir / "playlist.m3u"
+        content = playlist_path.read_text()
+        lines = [line for line in content.strip().split("\n") if line]
+        assert len(lines) == 1
+        assert lines[0].startswith("/"), f"絶対パスではない: {lines[0]}"
+
+    @pytest.mark.asyncio
+    async def test_r02_no_relative_path_in_playlist(self, tmp_path):
+        """R-02: playlist_tracks_dir 指定時、M3Uエントリが相対パス（./や../）でないこと。"""
+        channel_id = uuid.uuid4()
+        channel_slug = "egusugi"
+        tracks_dir = str(tmp_path / "tracks")
+        playlist_tracks_dir = "/tracks"
+
+        ch_dir = tmp_path / "tracks" / channel_slug
+        ch_dir.mkdir(parents=True)
+        (ch_dir / "song.flac").write_bytes(b"fake")
+
+        tracks = [_make_track(channel_id, f"{channel_slug}/song.flac", like_count=1)]
+        session = self._make_session(tracks)
+
+        await generate_weighted_playlist(
+            session, channel_id, channel_slug, tracks_dir,
+            playlist_tracks_dir=playlist_tracks_dir,
+        )
+
+        playlist_path = ch_dir / "playlist.m3u"
+        content = playlist_path.read_text()
+        lines = [line for line in content.strip().split("\n") if line]
+        for line in lines:
+            assert not line.startswith("./"), f"相対パス（./）が含まれている: {line}"
+            assert not line.startswith("../"), f"相対パス（../）が含まれている: {line}"
+
+    @pytest.mark.asyncio
+    async def test_r03_missing_file_excluded_from_playlist(self, tmp_path):
+        """R-03: ファイルが存在しないトラックはM3Uに含まれないこと。"""
+        channel_id = uuid.uuid4()
+        channel_slug = "egusugi"
+        tracks_dir = str(tmp_path / "tracks")
+        playlist_tracks_dir = "/tracks"
+
+        ch_dir = tmp_path / "tracks" / channel_slug
+        ch_dir.mkdir(parents=True)
+        (ch_dir / "existing_song.flac").write_bytes(b"fake")
+
+        tracks = [
+            _make_track(channel_id, f"{channel_slug}/existing_song.flac", like_count=1),
+            _make_track(channel_id, f"{channel_slug}/missing_song.flac", like_count=1),
+        ]
+        session = self._make_session(tracks)
+
+        count = await generate_weighted_playlist(
+            session, channel_id, channel_slug, tracks_dir,
+            playlist_tracks_dir=playlist_tracks_dir,
+        )
+
+        playlist_path = ch_dir / "playlist.m3u"
+        content = playlist_path.read_text()
+        lines = [line for line in content.strip().split("\n") if line]
+        assert count == 1
+        assert all("existing_song.flac" in line for line in lines)
+        assert all("missing_song.flac" not in line for line in lines)
+
+    @pytest.mark.asyncio
+    async def test_r04_container_path_used_in_m3u_entry(self, tmp_path):
+        """R-04: M3Uエントリが playlist_tracks_dir（コンテナ側パス）を使用すること。"""
+        channel_id = uuid.uuid4()
+        channel_slug = "egusugi"
+        tracks_dir = str(tmp_path / "tracks")
+        playlist_tracks_dir = "/tracks"
+
+        ch_dir = tmp_path / "tracks" / channel_slug
+        ch_dir.mkdir(parents=True)
+        (ch_dir / "song.flac").write_bytes(b"fake")
+
+        tracks = [_make_track(channel_id, f"{channel_slug}/song.flac", like_count=1)]
+        session = self._make_session(tracks)
+
+        await generate_weighted_playlist(
+            session, channel_id, channel_slug, tracks_dir,
+            playlist_tracks_dir=playlist_tracks_dir,
+        )
+
+        playlist_path = ch_dir / "playlist.m3u"
+        content = playlist_path.read_text()
+        lines = [line for line in content.strip().split("\n") if line]
+        assert lines[0] == f"/tracks/{channel_slug}/song.flac", (
+            f"期待: /tracks/{channel_slug}/song.flac, 実際: {lines[0]}"
+        )
+        assert str(tmp_path) not in lines[0]
+
+    @pytest.mark.asyncio
+    async def test_r05_path_generation_reproducibility(self, tmp_path):
+        """R-05: 同じ入力に対して生成されるM3Uエントリパスが毎回同一であること。"""
+        channel_id = uuid.uuid4()
+        channel_slug = "egusugi"
+        tracks_dir = str(tmp_path / "tracks")
+        playlist_tracks_dir = "/tracks"
+
+        ch_dir = tmp_path / "tracks" / channel_slug
+        ch_dir.mkdir(parents=True)
+        for i in range(3):
+            (ch_dir / f"song{i}.flac").write_bytes(b"fake")
+
+        tracks = [
+            _make_track(channel_id, f"{channel_slug}/song{i}.flac", like_count=1)
+            for i in range(3)
+        ]
+
+        from unittest.mock import AsyncMock
+
+        session1 = AsyncMock()
+        session1.execute = AsyncMock(return_value=FakeExecuteResult(tracks))
+        await generate_weighted_playlist(
+            session1, channel_id, channel_slug, tracks_dir,
+            playlist_tracks_dir=playlist_tracks_dir,
+        )
+        content1 = (ch_dir / "playlist.m3u").read_text()
+        paths1 = set(content1.strip().split("\n"))
+
+        session2 = AsyncMock()
+        session2.execute = AsyncMock(return_value=FakeExecuteResult(tracks))
+        await generate_weighted_playlist(
+            session2, channel_id, channel_slug, tracks_dir,
+            playlist_tracks_dir=playlist_tracks_dir,
+        )
+        content2 = (ch_dir / "playlist.m3u").read_text()
+        paths2 = set(content2.strip().split("\n"))
+
+        assert paths1 == paths2
+        for path in paths1:
+            if path:
+                assert path.startswith("/tracks/"), f"コンテナパスではない: {path}"

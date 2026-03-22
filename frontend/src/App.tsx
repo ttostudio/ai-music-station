@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChannelManager } from "./components/ChannelManager";
 import { ChannelSelector } from "./components/ChannelSelector";
-import { LyricsDisplay } from "./components/LyricsDisplay";
+import { MediaDisplay } from "./components/MediaDisplay";
 import { NowPlaying } from "./components/NowPlaying";
 import { Player } from "./components/Player";
 import { RequestForm } from "./components/RequestForm";
@@ -14,12 +14,16 @@ export default function App() {
   const { channels, loading, error } = useChannels();
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [showManager, setShowManager] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const nowPlaying = useNowPlaying(activeSlug);
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
 
-  // Track elapsed playback time for lyrics sync
+  // Shared audioRef — passed to Player and MediaDisplay (AudioVisualizer)
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Track elapsed playback time for lyrics sync and ProgressRing
   const [elapsedMs, setElapsedMs] = useState(0);
   const trackIdRef = useRef<string | null>(null);
 
@@ -30,7 +34,6 @@ export default function App() {
       return;
     }
 
-    // Reset elapsed when track changes
     if (trackIdRef.current !== nowPlaying.id) {
       trackIdRef.current = nowPlaying.id;
       setElapsedMs(0);
@@ -59,65 +62,92 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-      {/* Ambient background glow */}
-      <div className="ambient-glow" />
+  const durationMs = nowPlaying?.duration_ms ?? 0;
 
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-8 space-y-6">
+  // Determine ambient glow class from active channel
+  const ambientClass = activeSlug
+    ? activeSlug.includes("lofi") || activeSlug.includes("lo-fi") ? "ambient-lofi"
+    : activeSlug.includes("anime") ? "ambient-anime"
+    : activeSlug.includes("jazz") ? "ambient-jazz"
+    : activeSlug.includes("game") ? "ambient-game"
+    : ""
+    : "";
+
+  return (
+    <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+      {/* Channel-aware ambient background glow */}
+      <div className={`ambient-glow ${ambientClass}`} />
+
+      <div className="relative z-10">
         {/* Header */}
-        <header className="text-center slide-up">
+        <header className="text-center pt-6 pb-2 slide-up px-4">
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             AI Music Station
           </h1>
-          <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
+          <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
             AIが生成した音楽をライブ配信
           </p>
           <button
             onClick={() => setShowManager((v) => !v)}
-            className="mt-3 text-sm px-4 py-1.5 rounded-full transition-all duration-300 hover:bg-white/10"
-            style={{ color: 'var(--text-secondary)' }}
+            className="mt-3 text-sm px-4 py-1.5 rounded-full focus-ring"
+            style={{ color: "var(--text-secondary)", transition: "background-color var(--transition-normal) var(--ease-smooth)" }}
+            onMouseOver={(e) => ((e.target as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)")}
+            onMouseOut={(e) => ((e.target as HTMLButtonElement).style.background = "")}
           >
             {showManager ? "← ラジオに戻る" : "⚙️ チャンネル管理"}
           </button>
         </header>
 
         {showManager ? (
-          <ChannelManager onClose={() => setShowManager(false)} />
-        ) : (
-        <>
-        <ChannelSelector
-          channels={channels}
-          activeSlug={activeSlug}
-          onSelect={setActiveSlug}
-        />
-
-        <Player
-          streamUrl={streamUrl}
-          channelName={activeChannel?.name ?? ""}
-          nowPlaying={nowPlaying}
-        />
-
-        {activeSlug && (
-          <div className="space-y-5 slide-up">
-            <NowPlaying track={nowPlaying} activeSlug={activeSlug} />
-            {nowPlaying && <TrackTitle track={nowPlaying} />}
-            {nowPlaying?.lyrics && (
-              <LyricsDisplay
-                lyrics={nowPlaying.lyrics}
-                elapsedMs={elapsedMs}
-                durationMs={nowPlaying.duration_ms ?? 0}
-              />
-            )}
-            <RequestForm channelSlug={activeSlug} />
-            <TrackHistory channelSlug={activeSlug} />
+          <div className="max-w-2xl mx-auto px-4 py-4">
+            <ChannelManager onClose={() => setShowManager(false)} />
           </div>
-        )}
+        ) : (
+          <div className="app-layout">
+            {/* 左カラム */}
+            <aside className="left-column">
+              <ChannelSelector
+                channels={channels}
+                activeSlug={activeSlug}
+                onSelect={setActiveSlug}
+              />
 
-        <footer className="text-center text-xs pt-4" style={{ color: 'var(--text-muted)' }}>
-          AI Music Station &mdash; ACE-Step v1.5 搭載
-        </footer>
-        </>
+              <Player
+                streamUrl={streamUrl}
+                channelName={activeChannel?.name ?? ""}
+                nowPlaying={nowPlaying}
+                elapsedMs={elapsedMs}
+                durationMs={durationMs}
+                audioRef={audioRef}
+                onPlayingChange={setIsPlaying}
+              />
+
+              {activeSlug && (
+                <div className="space-y-5 slide-up">
+                  <NowPlaying track={nowPlaying} activeSlug={activeSlug} />
+                  {nowPlaying && <TrackTitle track={nowPlaying} />}
+                  <RequestForm channelSlug={activeSlug} />
+                  <TrackHistory channelSlug={activeSlug} nowPlayingId={nowPlaying?.id} />
+                </div>
+              )}
+
+              <footer className="text-center text-xs pt-4 pb-2" style={{ color: "var(--text-muted)" }}>
+                AI Music Station &mdash; ACE-Step v1.5 搭載
+              </footer>
+            </aside>
+
+            {/* 右カラム */}
+            <main className="right-column">
+              <MediaDisplay
+                audioRef={audioRef}
+                isPlaying={isPlaying}
+                channelSlug={activeSlug}
+                lyrics={nowPlaying?.lyrics}
+                elapsedMs={elapsedMs}
+                durationMs={durationMs}
+              />
+            </main>
+          </div>
         )}
       </div>
     </div>

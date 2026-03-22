@@ -48,11 +48,8 @@ export function RequestForm({ channelSlug }: Props) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="glass-card p-5 space-y-4"
-    >
-      <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+    <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4 request-form-container">
+      <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
         トラックをリクエスト
       </div>
 
@@ -85,14 +82,14 @@ export function RequestForm({ channelSlug }: Props) {
       )}
 
       {useMood && (
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
           雰囲気を指定すると、説明・歌詞フィールドは無効になります
         </p>
       )}
 
       <div className="flex gap-3 items-end">
         <div>
-          <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>BPM</label>
+          <label className="text-xs block mb-1.5" style={{ color: "var(--text-secondary)" }}>BPM</label>
           <input
             type="number"
             value={bpm}
@@ -107,19 +104,24 @@ export function RequestForm({ channelSlug }: Props) {
         <button
           type="submit"
           disabled={submitting}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 hover:shadow-lg hover:shadow-indigo-500/25 disabled:opacity-50 disabled:hover:shadow-none"
+          className="btn-submit"
         >
           {submitting ? "送信中..." : "リクエスト送信"}
         </button>
       </div>
 
       {success && (
-        <div className="text-sm px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400">
+        <div
+          className="text-sm px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400"
+          style={{ animation: "success-pop 0.4s var(--ease-bounce) forwards" }}
+        >
           {success}
         </div>
       )}
       {error && (
-        <div className="text-sm px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+        <div
+          className="text-sm px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 slide-up"
+        >
           {error}
         </div>
       )}

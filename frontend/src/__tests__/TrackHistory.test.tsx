@@ -78,7 +78,9 @@ describe("TrackHistory", () => {
     fireEvent.click(screen.getByText("星空のメロディ"));
 
     await waitFor(() => {
-      expect(screen.getByText("▼")).toBeInTheDocument();
+      // Arrow rotates via CSS class instead of changing character
+      const arrow = screen.getByText("▶");
+      expect(arrow).toHaveClass("expand-arrow-open");
       expect(screen.getByText("歌詞")).toBeInTheDocument();
     });
   });
@@ -90,14 +92,19 @@ describe("TrackHistory", () => {
     // Expand
     fireEvent.click(screen.getByText("星空のメロディ"));
     await waitFor(() => {
-      expect(screen.getByText("▼")).toBeInTheDocument();
+      const arrow = screen.getByText("▶");
+      expect(arrow).toHaveClass("expand-arrow-open");
     });
 
-    // Collapse
+    // Collapse — FR-104: 常時レンダリング + CSS max-height トランジション
+    // DOM上は残るが expand-content クラスのみ（expand-content-open なし）になる
     fireEvent.click(screen.getByText("星空のメロディ"));
     await waitFor(() => {
-      expect(screen.getByText("▶")).toBeInTheDocument();
-      expect(screen.queryByText("歌詞")).toBeNull();
+      const arrow = screen.getByText("▶");
+      expect(arrow).not.toHaveClass("expand-arrow-open");
+      // expand-content-open クラスが除去されたことを確認
+      const expandContent = document.querySelector(".expand-content");
+      expect(expandContent).not.toHaveClass("expand-content-open");
     });
   });
 

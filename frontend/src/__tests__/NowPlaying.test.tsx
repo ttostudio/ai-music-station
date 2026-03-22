@@ -20,8 +20,9 @@ const mockTrack: Track = {
 describe("NowPlaying", () => {
   it("shows placeholder when no track", () => {
     render(<NowPlaying track={null} />);
+    // FR-108-2: 未選択時メッセージを変更
     expect(
-      screen.getAllByText(/再生中のトラックはありません/).length,
+      screen.getAllByText(/チャンネルを選択して再生を開始してください/).length,
     ).toBeGreaterThan(0);
   });
 
