@@ -50,9 +50,9 @@ export function RequestForm({ channelSlug }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-gray-800 rounded-lg p-4 space-y-3"
+      className="glass-card p-5 space-y-4"
     >
-      <div className="text-sm font-medium text-gray-300">
+      <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
         トラックをリクエスト
       </div>
 
@@ -61,7 +61,7 @@ export function RequestForm({ channelSlug }: Props) {
         onChange={(e) => setMood(e.target.value)}
         placeholder="雰囲気（例: 夕焼けの帰り道、ノスタルジック）"
         rows={2}
-        className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+        className="w-full input-glass px-4 py-3 text-sm resize-none"
       />
 
       {!useMood && (
@@ -71,7 +71,7 @@ export function RequestForm({ channelSlug }: Props) {
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="作りたい音楽を説明してください..."
-            className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full input-glass px-4 py-3 text-sm"
           />
 
           <textarea
@@ -79,20 +79,20 @@ export function RequestForm({ channelSlug }: Props) {
             onChange={(e) => setLyrics(e.target.value)}
             placeholder="歌詞（任意、[Verse], [Chorus] タグ使用可）"
             rows={3}
-            className="w-full bg-gray-700 rounded px-3 py-2 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="w-full input-glass px-4 py-3 text-sm resize-none"
           />
         </>
       )}
 
       {useMood && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           雰囲気を指定すると、説明・歌詞フィールドは無効になります
         </p>
       )}
 
       <div className="flex gap-3 items-end">
         <div>
-          <label className="text-xs text-gray-400 block mb-1">BPM</label>
+          <label className="text-xs block mb-1.5" style={{ color: 'var(--text-secondary)' }}>BPM</label>
           <input
             type="number"
             value={bpm}
@@ -100,21 +100,29 @@ export function RequestForm({ channelSlug }: Props) {
             placeholder="自動"
             min={30}
             max={300}
-            className="w-20 bg-gray-700 rounded px-2 py-1.5 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-20 input-glass px-3 py-2 text-sm"
           />
         </div>
 
         <button
           type="submit"
           disabled={submitting}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 rounded text-sm font-medium transition-colors"
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 hover:shadow-lg hover:shadow-indigo-500/25 disabled:opacity-50 disabled:hover:shadow-none"
         >
           {submitting ? "送信中..." : "リクエスト送信"}
         </button>
       </div>
 
-      {success && <div className="text-green-400 text-sm">{success}</div>}
-      {error && <div className="text-red-400 text-sm">{error}</div>}
+      {success && (
+        <div className="text-sm px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="text-sm px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+          {error}
+        </div>
+      )}
     </form>
   );
 }
