@@ -135,7 +135,7 @@ export function Player({
 
   return (
     <div className={`glass-card p-6 slide-up ${isPlaying ? "player-card-playing glow-accent" : ""}`}>
-      <audio ref={audioRef} src={streamUrl ?? undefined} preload="none" />
+      <audio ref={audioRef} src={streamUrl ?? undefined} preload="auto" crossOrigin="anonymous" />
 
       <div className="flex items-center gap-5">
         {/* Album art with Progress Ring */}
@@ -157,7 +157,7 @@ export function Player({
             onClick={onTogglePlay}
             disabled={!streamUrl}
             className={`player-button focus-ring ${isPlaying ? "player-button-playing" : ""} ${!streamUrl ? "opacity-50 cursor-not-allowed" : ""}`}
-            style={{ position: "absolute", inset: 0, background: isPlaying ? "transparent" : undefined }}
+            style={{ position: "absolute", inset: 0, background: "transparent" }}
             aria-label={isPlaying ? "一時停止" : "再生"}
           >
             {isPlaying ? (

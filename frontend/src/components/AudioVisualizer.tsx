@@ -31,6 +31,14 @@ function getChannelColors(slug: string | null): [string, string] {
 const sourceNodeMap = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>();
 const audioContextMap = new WeakMap<HTMLAudioElement, AudioContext>();
 
+// Expose resume function globally so play button can resume suspended AudioContext
+export function resumeAudioContext(audio: HTMLAudioElement): void {
+  const ctx = audioContextMap.get(audio);
+  if (ctx && ctx.state === "suspended") {
+    ctx.resume();
+  }
+}
+
 export function AudioVisualizer({ audioRef, isPlaying, channelSlug }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -63,13 +71,15 @@ export function AudioVisualizer({ audioRef, isPlaying, channelSlug }: Props) {
       audio.crossOrigin = "anonymous";
       source = ctx.createMediaElementSource(audio);
       sourceNodeMap.set(audio, source);
+      // IMPORTANT: connect source directly to destination so audio is always audible
+      source.connect(ctx.destination);
     }
 
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
     analyser.smoothingTimeConstant = 0.8;
+    // Tap into the audio chain for visualization (source -> analyser, source -> destination)
     source.connect(analyser);
-    analyser.connect(ctx.destination);
 
     const bufferLength = analyser.frequencyBinCount;
     dataArrayRef.current = new Uint8Array(bufferLength) as Uint8Array<ArrayBuffer>;
