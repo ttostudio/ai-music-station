@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 
 interface LyricsSection {
   header: string | null;
@@ -45,6 +45,56 @@ function getAllLines(lyrics: string): string[] {
     .filter((l) => !l.match(/^\[.+\]$/));
 }
 
+/** イントロオフセット: 全体の10%をイントロ無音区間として補正 */
+function computeActiveIndex(
+  elapsedMs: number,
+  durationMs: number,
+  lineCount: number
+): number {
+  if (durationMs <= 0 || lineCount <= 0) return 0;
+  const introOffset = durationMs * 0.1;
+  const adjusted = Math.max(0, elapsedMs - introOffset);
+  const lyricsSpan = durationMs - introOffset;
+  return Math.min(
+    Math.floor(adjusted / (lyricsSpan / lineCount)),
+    lineCount - 1
+  );
+}
+
+/** 手動スクロール検出フック: ユーザーがスクロールしたら3秒間自動スクロールを停止 */
+function useManualScrollPause(containerRef: React.RefObject<HTMLElement | null>) {
+  const [paused, setPaused] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const programmaticScroll = useRef(false);
+
+  const markProgrammatic = useCallback(() => {
+    programmaticScroll.current = true;
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      if (programmaticScroll.current) {
+        programmaticScroll.current = false;
+        return;
+      }
+      setPaused(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setPaused(false), 3000);
+    };
+
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [containerRef]);
+
+  return { paused, markProgrammatic };
+}
+
 export function LyricsDisplay({
   lyrics,
   elapsedMs,
@@ -87,21 +137,19 @@ function KaraokeOverlay({
 }) {
   const lines = useMemo(() => getAllLines(lyrics), [lyrics]);
   const activeLineRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { paused, markProgrammatic } = useManualScrollPause(scrollContainerRef);
 
-  const activeIndex =
-    durationMs > 0 && lines.length > 0
-      ? Math.min(
-          Math.floor(elapsedMs / (durationMs / lines.length)),
-          lines.length - 1
-        )
-      : 0;
+  const activeIndex = computeActiveIndex(elapsedMs, durationMs, lines.length);
 
   useEffect(() => {
+    if (paused) return;
+    markProgrammatic();
     activeLineRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "center",
     });
-  }, [activeIndex]);
+  }, [activeIndex, paused, markProgrammatic]);
 
   if (lines.length === 0) return null;
 
@@ -115,7 +163,7 @@ function KaraokeOverlay({
       aria-live="polite"
       aria-label="歌詞"
     >
-      <div className="karaoke-scroll-container">
+      <div className="karaoke-scroll-container" ref={scrollContainerRef}>
         {lines.map((line, i) => {
           const isPast = i < activeIndex;
           const isActive = i === activeIndex;
@@ -186,21 +234,19 @@ function ScrollPanel({
   const lines = useMemo(() => getAllLines(lyrics), [lyrics]);
   const sections = useMemo(() => parseLyrics(lyrics), [lyrics]);
   const activeLineRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { paused, markProgrammatic } = useManualScrollPause(panelRef);
 
-  const activeIndex =
-    durationMs > 0 && lines.length > 0
-      ? Math.min(
-          Math.floor(elapsedMs / (durationMs / lines.length)),
-          lines.length - 1
-        )
-      : 0;
+  const activeIndex = computeActiveIndex(elapsedMs, durationMs, lines.length);
 
   useEffect(() => {
+    if (paused) return;
+    markProgrammatic();
     activeLineRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "center",
     });
-  }, [activeIndex]);
+  }, [activeIndex, paused, markProgrammatic]);
 
   if (lines.length === 0) return null;
 
@@ -221,7 +267,7 @@ function ScrollPanel({
   }
 
   return (
-    <div className="lyrics-panel" role="log" aria-live="polite" aria-label="歌詞">
+    <div className="lyrics-panel" ref={panelRef} role="log" aria-live="polite" aria-label="歌詞">
       <div
         className="text-xs uppercase tracking-widest mb-2 px-1"
         style={{ color: "var(--text-muted)" }}
