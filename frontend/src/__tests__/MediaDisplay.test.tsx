@@ -109,8 +109,8 @@ describe("MediaDisplay", () => {
   });
 });
 
-describe("MediaDisplay lyrics mode toggle", () => {
-  it("does not show toggle buttons when no lyrics", () => {
+describe("MediaDisplay split view layout", () => {
+  it("does not show lyrics views when no lyrics", () => {
     const audioRef = createRef<HTMLAudioElement>();
     render(
       <MediaDisplay
@@ -121,89 +121,27 @@ describe("MediaDisplay lyrics mode toggle", () => {
         durationMs={0}
       />,
     );
-    expect(screen.queryByLabelText("歌詞をテキストパネルで表示")).toBeNull();
-    expect(screen.queryByLabelText("歌詞をカラオケオーバーレイで表示")).toBeNull();
-  });
-
-  it("shows toggle buttons when lyrics are provided", () => {
-    const audioRef = createRef<HTMLAudioElement>();
-    render(
-      <MediaDisplay
-        audioRef={audioRef}
-        isPlaying={false}
-        channelSlug="lofi"
-        lyrics="星空に浮かぶ\n君の笑顔が"
-        elapsedMs={0}
-        durationMs={120000}
-      />,
-    );
-    expect(screen.getByLabelText("歌詞をテキストパネルで表示")).toBeInTheDocument();
-    expect(screen.getByLabelText("歌詞をカラオケオーバーレイで表示")).toBeInTheDocument();
-  });
-
-  it("starts with karaoke-overlay (Pattern B) as default", () => {
-    const audioRef = createRef<HTMLAudioElement>();
-    render(
-      <MediaDisplay
-        audioRef={audioRef}
-        isPlaying={false}
-        channelSlug="lofi"
-        lyrics="星空に浮かぶ\n君の笑顔が"
-        elapsedMs={0}
-        durationMs={120000}
-      />,
-    );
-    const overlayBtn = screen.getByLabelText("歌詞をカラオケオーバーレイで表示");
-    expect(overlayBtn).toHaveAttribute("aria-pressed", "true");
-    const scrollBtn = screen.getByLabelText("歌詞をテキストパネルで表示");
-    expect(scrollBtn).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it("switches to scroll-panel (Pattern A) when scroll button is clicked", () => {
-    const audioRef = createRef<HTMLAudioElement>();
-    render(
-      <MediaDisplay
-        audioRef={audioRef}
-        isPlaying={false}
-        channelSlug="lofi"
-        lyrics="星空に浮かぶ\n君の笑顔が"
-        elapsedMs={0}
-        durationMs={120000}
-      />,
-    );
-    const scrollBtn = screen.getByLabelText("歌詞をテキストパネルで表示");
-    fireEvent.click(scrollBtn);
-
-    // karaoke overlay should be gone
     expect(document.querySelector(".karaoke-overlay")).toBeNull();
-    // lyrics panel should appear
-    expect(document.querySelector(".lyrics-panel")).toBeInTheDocument();
-    // aria-pressed updated
-    expect(scrollBtn).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("switches back to karaoke-overlay when overlay button is clicked", () => {
-    const audioRef = createRef<HTMLAudioElement>();
-    render(
-      <MediaDisplay
-        audioRef={audioRef}
-        isPlaying={false}
-        channelSlug="lofi"
-        lyrics="星空に浮かぶ\n君の笑顔が"
-        elapsedMs={0}
-        durationMs={120000}
-      />,
-    );
-    // Switch to scroll-panel first
-    fireEvent.click(screen.getByLabelText("歌詞をテキストパネルで表示"));
-    // Switch back to overlay
-    fireEvent.click(screen.getByLabelText("歌詞をカラオケオーバーレイで表示"));
-
-    expect(document.querySelector(".karaoke-overlay")).toBeInTheDocument();
     expect(document.querySelector(".lyrics-panel")).toBeNull();
   });
 
-  it("applies media-display-panel-mode class in scroll-panel mode", () => {
+  it("shows both karaoke overlay and scroll panel when lyrics are provided", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        lyrics="星空に浮かぶ\n君の笑顔が"
+        elapsedMs={0}
+        durationMs={120000}
+      />,
+    );
+    expect(document.querySelector(".karaoke-overlay")).toBeInTheDocument();
+    expect(document.querySelector(".lyrics-panel")).toBeInTheDocument();
+  });
+
+  it("uses media-display-split class for split layout", () => {
     const audioRef = createRef<HTMLAudioElement>();
     const { container } = render(
       <MediaDisplay
@@ -216,10 +154,43 @@ describe("MediaDisplay lyrics mode toggle", () => {
       />,
     );
     const mediaDisplay = container.querySelector(".media-display");
-    expect(mediaDisplay).not.toHaveClass("media-display-panel-mode");
+    expect(mediaDisplay).toHaveClass("media-display-split");
+  });
 
-    fireEvent.click(screen.getByLabelText("歌詞をテキストパネルで表示"));
-    expect(mediaDisplay).toHaveClass("media-display-panel-mode");
+  it("renders karaoke overlay inside media-upper section", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        lyrics="星空に浮かぶ\n君の笑顔が"
+        elapsedMs={0}
+        durationMs={120000}
+      />,
+    );
+    const upper = document.querySelector(".media-upper");
+    expect(upper).toBeInTheDocument();
+    expect(upper?.querySelector(".karaoke-overlay")).toBeInTheDocument();
+  });
+
+  it("renders both views simultaneously without toggle", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        lyrics="星空に浮かぶ\n君の笑顔が"
+        elapsedMs={5000}
+        durationMs={120000}
+      />,
+    );
+    // Both views coexist
+    const overlays = document.querySelectorAll(".karaoke-overlay");
+    const panels = document.querySelectorAll(".lyrics-panel");
+    expect(overlays.length).toBe(1);
+    expect(panels.length).toBe(1);
   });
 });
 

@@ -391,3 +391,140 @@ describe("LyricsDisplay non-active line styles", () => {
     expect(opacity).toBeLessThan(1);
   });
 });
+
+// ===== LRC形式パースとカラオケ表示テスト =====
+
+const lrcLyrics = `[00:05.00]夜空に輝く星たち
+[00:12.50]静かに流れる時間
+[00:20.00]この瞬間を忘れない
+[00:28.00]永遠に続く melody`;
+
+describe("LyricsDisplay LRC format (karaoke-overlay)", () => {
+  it("renders LRC lyrics with 2-line focus layout", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={6000}
+        durationMs={60000}
+        mode="karaoke-overlay"
+      />,
+    );
+    // Active line (1st) should be visible
+    expect(screen.getByText("夜空に輝く星たち")).toBeInTheDocument();
+    // Next line should also be visible
+    expect(screen.getByText("静かに流れる時間")).toBeInTheDocument();
+    // LRC container should exist
+    expect(document.querySelector(".karaoke-lrc-container")).toBeInTheDocument();
+  });
+
+  it("shows waiting state before first timestamp", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={2000}
+        durationMs={60000}
+        mode="karaoke-overlay"
+      />,
+    );
+    // Before 5000ms, should show waiting state with first line
+    expect(document.querySelector(".karaoke-lrc-waiting")).toBeInTheDocument();
+    expect(screen.getByText("夜空に輝く星たち")).toBeInTheDocument();
+  });
+
+  it("advances to correct line based on timestamp", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={15000}
+        durationMs={60000}
+        mode="karaoke-overlay"
+      />,
+    );
+    // At 15000ms, 2nd line (12500ms) should be active
+    const activeLine = document.querySelector(".karaoke-lrc-active");
+    expect(activeLine).toBeInTheDocument();
+    expect(activeLine?.textContent).toBe("静かに流れる時間");
+    // Next line should show
+    const nextLine = document.querySelector(".karaoke-lrc-next");
+    expect(nextLine?.textContent).toBe("この瞬間を忘れない");
+  });
+
+  it("uses character-level highlight on active line", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={8000}
+        durationMs={60000}
+        mode="karaoke-overlay"
+      />,
+    );
+    // Active line should have karaoke-highlight-text span
+    const highlight = document.querySelector(".karaoke-highlight-text");
+    expect(highlight).toBeInTheDocument();
+    // Should have background-clip: text for gradient effect
+    expect(highlight).toHaveStyle({ backgroundClip: "text" });
+  });
+
+  it("last line has no next line displayed", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={30000}
+        durationMs={60000}
+        mode="karaoke-overlay"
+      />,
+    );
+    // At 30000ms, 4th (last) line should be active
+    const activeLine = document.querySelector(".karaoke-lrc-active");
+    expect(activeLine?.textContent).toBe("永遠に続く melody");
+    // No next line
+    expect(document.querySelector(".karaoke-lrc-next")).toBeNull();
+  });
+});
+
+describe("LyricsDisplay LRC format (scroll-panel)", () => {
+  it("renders all LRC lines in scroll panel", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={6000}
+        durationMs={60000}
+        mode="scroll-panel"
+      />,
+    );
+    expect(screen.getByText("夜空に輝く星たち")).toBeInTheDocument();
+    expect(screen.getByText("静かに流れる時間")).toBeInTheDocument();
+    expect(screen.getByText("この瞬間を忘れない")).toBeInTheDocument();
+    expect(screen.getByText("永遠に続く melody")).toBeInTheDocument();
+  });
+
+  it("highlights active line with gradient in scroll panel", () => {
+    render(
+      <LyricsDisplay
+        lyrics={lrcLyrics}
+        elapsedMs={15000}
+        durationMs={60000}
+        mode="scroll-panel"
+      />,
+    );
+    // 2nd line should have karaoke-highlight-text
+    const highlight = document.querySelector(".karaoke-highlight-text");
+    expect(highlight).toBeInTheDocument();
+    expect(highlight?.textContent).toBe("静かに流れる時間");
+  });
+
+  it("non-LRC lyrics still work in scroll panel", () => {
+    render(
+      <LyricsDisplay
+        lyrics={simpleLyrics}
+        elapsedMs={0}
+        durationMs={120000}
+        mode="scroll-panel"
+      />,
+    );
+    // Legacy mode: golden color, no gradient highlight
+    expect(document.querySelector(".karaoke-highlight-text")).toBeNull();
+    const firstLine = screen.getByText("星空に浮かぶ");
+    expect(firstLine).toHaveStyle({ color: "#FFD700" });
+  });
+});
