@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ChannelManager } from "./components/ChannelManager";
 import { ChannelSelector } from "./components/ChannelSelector";
 import { MediaDisplay } from "./components/MediaDisplay";
@@ -10,6 +10,7 @@ import { TrackTitle } from "./components/TrackTitle";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { resumeAudioContext } from "./components/AudioVisualizer";
 
 export default function App() {
   const { channels, loading, error } = useChannels();
@@ -18,7 +19,8 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const prevVolumeRef = useRef(0.8);
-  const nowPlaying = useNowPlaying(activeSlug);
+  const playerRef = useRef<HTMLDivElement>(null);
+  const { track: nowPlaying, elapsedMs } = useNowPlaying(activeSlug);
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
@@ -33,6 +35,7 @@ export default function App() {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
+        resumeAudioContext(audioRef.current);
         await audioRef.current.play();
         setIsPlaying(true);
       }
@@ -63,6 +66,7 @@ export default function App() {
     (index: number) => {
       if (index < channels.length) {
         setActiveSlug(channels[index].slug);
+        playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     },
     [channels],
@@ -75,29 +79,6 @@ export default function App() {
     onMute: handleMute,
     onSelectChannel: handleSelectChannel,
   });
-
-  // Track elapsed playback time for lyrics sync and ProgressRing
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const trackIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!nowPlaying) {
-      setElapsedMs(0);
-      trackIdRef.current = null;
-      return;
-    }
-
-    if (trackIdRef.current !== nowPlaying.id) {
-      trackIdRef.current = nowPlaying.id;
-      setElapsedMs(0);
-    }
-
-    const id = setInterval(() => {
-      setElapsedMs((prev) => prev + 500);
-    }, 500);
-
-    return () => clearInterval(id);
-  }, [nowPlaying]);
 
   if (loading) {
     return (
@@ -162,21 +143,26 @@ export default function App() {
               <ChannelSelector
                 channels={channels}
                 activeSlug={activeSlug}
-                onSelect={setActiveSlug}
+                onSelect={(slug) => {
+                  setActiveSlug(slug);
+                  playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }}
               />
 
-              <Player
-                streamUrl={streamUrl}
-                channelName={activeChannel?.name ?? ""}
-                nowPlaying={nowPlaying}
-                elapsedMs={elapsedMs}
-                durationMs={durationMs}
-                audioRef={audioRef}
-                volume={volume}
-                onVolumeChange={setVolume}
-                isPlaying={isPlaying}
-                onTogglePlay={togglePlay}
-              />
+              <div ref={playerRef}>
+                <Player
+                  streamUrl={streamUrl}
+                  channelName={activeChannel?.name ?? ""}
+                  nowPlaying={nowPlaying}
+                  elapsedMs={elapsedMs}
+                  durationMs={durationMs}
+                  audioRef={audioRef}
+                  volume={volume}
+                  onVolumeChange={setVolume}
+                  isPlaying={isPlaying}
+                  onTogglePlay={togglePlay}
+                />
+              </div>
 
               {activeSlug && (
                 <div className="space-y-5 slide-up">
