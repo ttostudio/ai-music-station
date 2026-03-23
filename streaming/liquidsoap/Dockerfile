@@ -8,10 +8,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /entrypoint.sh
+COPY notify-now-playing.sh /etc/liquidsoap/notify-now-playing.sh
 COPY silence.wav /tmp/silence.wav
 RUN ffmpeg -i /tmp/silence.wav -c:a flac /etc/liquidsoap/silence.flac -y && rm /tmp/silence.wav
 
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /etc/liquidsoap/notify-now-playing.sh
 
 USER liquidsoap
 

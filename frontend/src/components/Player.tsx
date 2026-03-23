@@ -157,7 +157,7 @@ export function Player({
             onClick={onTogglePlay}
             disabled={!streamUrl}
             className={`player-button focus-ring ${isPlaying ? "player-button-playing" : ""} ${!streamUrl ? "opacity-50 cursor-not-allowed" : ""}`}
-            style={{ position: "absolute", inset: 0, background: isPlaying ? "transparent" : undefined }}
+            style={{ position: "absolute", inset: 0 }}
             aria-label={isPlaying ? "一時停止" : "再生"}
           >
             {isPlaying ? (

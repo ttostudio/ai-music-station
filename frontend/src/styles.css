@@ -460,12 +460,13 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-card-elevated);
+  background: rgba(0, 0, 0, 0.4);
   box-shadow: var(--neo-shadow-button);
   transition: transform var(--transition-normal) var(--ease-smooth),
               box-shadow var(--transition-normal) var(--ease-smooth),
               background-color var(--transition-normal) var(--ease-smooth);
   touch-action: manipulation;
+  z-index: 3;
 }
 
 @media (hover: hover) {
@@ -922,7 +923,8 @@ input[type="range"]::-moz-range-thumb {
   background: var(--bg-primary);
   border: 2px solid rgba(255, 255, 255, 0.1);
   transform: translate(-50%, -50%);
-  z-index: 2;
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* ===== Progress Ring Glow ===== */

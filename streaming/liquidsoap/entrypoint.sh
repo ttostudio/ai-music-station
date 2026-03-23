@@ -54,6 +54,13 @@ ${var}_dir = playlist(mode="randomize", reload_mode="watch", "/tracks/${ch}")
 ${var}_radio = crossfade(fallback(track_sensitive=true, [${var}_playlist, ${var}_dir]))
 ${var}_radio = fallback(track_sensitive=true, [${var}_radio, silence])
 
+${var}_radio.on_metadata(fun(m) ->
+  let filename = m["filename"]
+  if filename != "" then
+    ignore(process.run("/etc/liquidsoap/notify-now-playing.sh '${ch}' '#{filename}'"))
+  end
+end)
+
 output.icecast(
   %vorbis(quality=0.5),
   host=icecast_host,

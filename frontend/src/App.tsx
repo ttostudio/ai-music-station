@@ -14,11 +14,20 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 export default function App() {
   const { channels, loading, error } = useChannels();
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
   const [showManager, setShowManager] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const prevVolumeRef = useRef(0.8);
   const nowPlaying = useNowPlaying(activeSlug);
+
+  const handleChannelSelect = useCallback((slug: string) => {
+    setActiveSlug(slug);
+    // Ensure the player stays visible after new components render below
+    requestAnimationFrame(() => {
+      playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, []);
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
@@ -162,9 +171,10 @@ export default function App() {
               <ChannelSelector
                 channels={channels}
                 activeSlug={activeSlug}
-                onSelect={setActiveSlug}
+                onSelect={handleChannelSelect}
               />
 
+              <div ref={playerRef}>
               <Player
                 streamUrl={streamUrl}
                 channelName={activeChannel?.name ?? ""}
@@ -177,6 +187,7 @@ export default function App() {
                 isPlaying={isPlaying}
                 onTogglePlay={togglePlay}
               />
+              </div>
 
               {activeSlug && (
                 <div className="space-y-5 slide-up">
