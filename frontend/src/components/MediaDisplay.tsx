@@ -76,6 +76,27 @@ export function MediaDisplay({
         />
       )}
 
+      {/* インストゥルメンタル表示 — 歌詞なし時 */}
+      {!hasLyrics && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "1.5rem",
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            color: "var(--text-muted)",
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            letterSpacing: "0.05em",
+            opacity: 0.7,
+            pointerEvents: "none",
+          }}
+        >
+          ♪ インストゥルメンタル
+        </div>
+      )}
+
       {/* 切替トグルボタン (z-index: 20) — 歌詞あり時のみ */}
       {hasLyrics && (
         <div className="lyrics-mode-toggle">

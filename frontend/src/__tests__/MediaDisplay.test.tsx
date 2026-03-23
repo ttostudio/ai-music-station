@@ -222,3 +222,96 @@ describe("MediaDisplay lyrics mode toggle", () => {
     expect(mediaDisplay).toHaveClass("media-display-panel-mode");
   });
 });
+
+// ===== インストゥルメンタル表示テスト =====
+
+describe("MediaDisplay instrumental display", () => {
+  it("shows instrumental label when no lyrics provided", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        elapsedMs={0}
+        durationMs={180000}
+      />,
+    );
+    expect(screen.getByText("♪ インストゥルメンタル")).toBeInTheDocument();
+  });
+
+  it("shows instrumental label when lyrics is empty string", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        lyrics=""
+        elapsedMs={0}
+        durationMs={180000}
+      />,
+    );
+    expect(screen.getByText("♪ インストゥルメンタル")).toBeInTheDocument();
+  });
+
+  it("shows instrumental label when lyrics is whitespace only", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        lyrics="   "
+        elapsedMs={0}
+        durationMs={180000}
+      />,
+    );
+    expect(screen.getByText("♪ インストゥルメンタル")).toBeInTheDocument();
+  });
+
+  it("does not show instrumental label when lyrics provided", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        lyrics="星空に浮かぶ\n君の笑顔が"
+        elapsedMs={0}
+        durationMs={120000}
+      />,
+    );
+    expect(screen.queryByText("♪ インストゥルメンタル")).toBeNull();
+  });
+
+  it("instrumental label has pointer-events none", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        elapsedMs={0}
+        durationMs={180000}
+      />,
+    );
+    const label = screen.getByText("♪ インストゥルメンタル");
+    expect(label).toHaveStyle({ pointerEvents: "none" });
+  });
+
+  it("does not show lyrics mode toggle when no lyrics", () => {
+    const audioRef = createRef<HTMLAudioElement>();
+    render(
+      <MediaDisplay
+        audioRef={audioRef}
+        isPlaying={false}
+        channelSlug="lofi"
+        elapsedMs={0}
+        durationMs={180000}
+      />,
+    );
+    expect(screen.queryByLabelText("歌詞をテキストパネルで表示")).toBeNull();
+    expect(screen.queryByLabelText("歌詞をカラオケオーバーレイで表示")).toBeNull();
+  });
+});
