@@ -20,7 +20,8 @@ export default function App() {
   const [volume, setVolume] = useState(0.8);
   const prevVolumeRef = useRef(0.8);
   const playerRef = useRef<HTMLDivElement>(null);
-  const { track: nowPlaying, elapsedMs } = useNowPlaying(activeSlug);
+  const nowPlaying = useNowPlaying(activeSlug);
+  const elapsedMs = 0; // TODO: re-implement elapsed time tracking
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
