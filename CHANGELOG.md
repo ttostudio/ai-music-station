@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Security
+- 内部 API 認証導入: POST /internal/* に Bearer Token 認証を追加（環境変数 INTERNAL_API_KEY）
+- 認証なしリクエストは 401 Unauthorized を返す
+
 ### Added
 - 共有リンク API（POST /api/tracks/{id}/share — idempotent トークン発行）
 - OGP メタタグ付き共有ページ（GET /share/{token} — SSR HTML）

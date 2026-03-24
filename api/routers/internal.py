@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.auth import verify_internal_api_key
 from api.db import get_session
 from api.schemas import NowPlayingUpdate, WorkerHeartbeat
 from worker.models import Channel, NowPlaying, Track
@@ -13,7 +14,7 @@ from worker.models import Channel, NowPlaying, Track
 router = APIRouter(prefix="/internal", tags=["internal"])
 
 
-@router.post("/now-playing")
+@router.post("/now-playing", dependencies=[Depends(verify_internal_api_key)])
 async def update_now_playing(
     body: NowPlayingUpdate,
     session: AsyncSession = Depends(get_session),
@@ -51,6 +52,6 @@ async def update_now_playing(
     return {"ok": True}
 
 
-@router.post("/worker-heartbeat")
+@router.post("/worker-heartbeat", dependencies=[Depends(verify_internal_api_key)])
 async def worker_heartbeat(body: WorkerHeartbeat) -> dict:
     return {"ok": True, "worker_id": body.worker_id}
