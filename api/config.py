@@ -9,6 +9,8 @@ class APISettings(BaseSettings):
     )
     debug: bool = False
     claude_command: str = "claude"
+    public_base_url: str = "http://localhost:3200"
+    analytics_ip_salt: str = "changeme-random-salt"
 
     model_config = {"env_prefix": "", "env_file": ".env", "extra": "ignore"}
 

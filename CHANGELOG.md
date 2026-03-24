@@ -3,6 +3,15 @@
 ## [Unreleased]
 
 ### Added
+- 共有リンク API（POST /api/tracks/{id}/share — idempotent トークン発行）
+- OGP メタタグ付き共有ページ（GET /share/{token} — SSR HTML）
+- 再生トラッキング API（POST /api/analytics/play — fire-and-forget）
+- トラック統計 API（GET /api/analytics/tracks/{id}/stats）
+- DB: share_links テーブル（共有トークン管理）
+- DB: track_analytics テーブル（再生・閲覧イベント記録）
+- Caddy: /share/* ルート追加（FastAPI へプロキシ）
+- セキュリティ: IP ハッシュ化（SHA-256 + ソルト）、HTML エスケープ、入力バリデーション
+- 環境変数: PUBLIC_BASE_URL, ANALYTICS_IP_SALT
 - モバイルレスポンシブレイアウト（タブバー + 画面遷移型）
 - PC/タブレット横シアター型レイアウト（フローティングバー + チャンネルメニュー + 歌詞パネル）
 - タブレット縦持ちレイアウト（上下分割）

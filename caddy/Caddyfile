@@ -7,6 +7,10 @@
 		respond 404
 	}
 
+	handle /share/* {
+		reverse_proxy api:8000
+	}
+
 	handle /stream/* {
 		header Access-Control-Allow-Origin *
 		header Access-Control-Allow-Methods "GET, OPTIONS"
