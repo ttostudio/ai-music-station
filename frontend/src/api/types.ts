@@ -97,7 +97,25 @@ export interface Track {
   instrumental: boolean | null;
   play_count: number;
   like_count: number;
+  quality_score?: number;
   created_at: string;
+}
+
+export interface TrackQualityResponse {
+  track_id: string;
+  score: number;
+  auto_drafted: boolean;
+  details: {
+    duration_sec: number | null;
+    bit_rate: number | null;
+    sample_rate: number | null;
+    mean_volume_db: number | null;
+    max_volume_db: number | null;
+    silence_ratio: number | null;
+    dynamic_range_db: number | null;
+    score_breakdown: Record<string, number>;
+  };
+  scored_at: string;
 }
 
 export interface ReactionResponse {

@@ -18,6 +18,7 @@ from worker.channel_presets import get_preset
 from worker.config import settings
 from worker.models import Channel, Request, Track
 from worker.playlist_generator import generate_weighted_playlist
+from worker.quality_scorer import QualityScorer
 from worker.track_retirement import retire_unpopular_tracks
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class QueueConsumer:
         self.client = client or ACEStepClient()
         self.tracks_dir = Path(tracks_dir)
         self.worker_id = worker_id or settings.worker_id or platform.node()
+        self.quality_scorer = QualityScorer()
 
     async def claim_request(self, session: AsyncSession) -> Request | None:
         result = await session.execute(
@@ -165,6 +167,20 @@ class QueueConsumer:
         )
         await session.commit()
         logger.info("Track generated: %s (%d bytes)", file_path, file_size)
+
+        # 品質スコアリング（fire-and-forget: エラーがあっても生成フローを止めない）
+        try:
+            threshold = channel.quality_threshold if hasattr(channel, "quality_threshold") else 30.0
+            await self.quality_scorer.score_track(
+                session=session,
+                track_id=track.id,
+                file_path=str(full_path),
+                channel_threshold=threshold,
+            )
+            await session.commit()
+        except Exception as e:
+            logger.warning("Quality scoring failed for track %s: %s", track.id, e)
+
         return track
 
     async def fail_request(self, session: AsyncSession, request_id, error_msg: str):

@@ -3,6 +3,7 @@ import { getTracks } from "../api/client";
 import type { Track } from "../api/types";
 import { ReactionButton } from "./ReactionButton";
 import { LyricsDisplay } from "./LyricsDisplay";
+import { QualityScoreBadge } from "./QualityScoreBadge";
 
 interface Props {
   channelSlug: string;
@@ -71,6 +72,11 @@ export function TrackHistory({ channelSlug, nowPlayingId }: Props) {
               <span className={`truncate flex-1 ${isNowPlaying ? "font-semibold text-indigo-300" : ""}`}>
                 {track.title || track.caption}
               </span>
+              {track.quality_score != null && (
+                <span className="shrink-0 hidden-mobile" onClick={(e) => e.stopPropagation()}>
+                  <QualityScoreBadge score={track.quality_score} size="sm" showLabel={false} />
+                </span>
+              )}
               <span className="shrink-0 text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
                 {track.play_count}回再生
               </span>
