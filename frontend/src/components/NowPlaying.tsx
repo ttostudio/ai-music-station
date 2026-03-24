@@ -1,5 +1,6 @@
 import type { Track } from "../api/types";
 import { ReactionButton } from "./ReactionButton";
+import { QualityScoreBadge } from "./QualityScoreBadge";
 
 interface Props {
   track: Track | null;
@@ -68,6 +69,11 @@ export function NowPlaying({ track, activeSlug }: Props) {
               </span>
             )}
           </div>
+          {track.quality_score != null && (
+            <div className="mt-2">
+              <QualityScoreBadge score={track.quality_score} size="md" showLabel={true} />
+            </div>
+          )}
         </div>
         <ReactionButton trackId={track.id} />
       </div>

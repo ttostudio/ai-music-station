@@ -10,6 +10,7 @@ import type {
   RequestResponse,
   ShareLinkResponse,
   TrackListResponse,
+  TrackQualityResponse,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -126,4 +127,12 @@ export async function createShareLink(
   return fetchJSON<ShareLinkResponse>(`${BASE_URL}/tracks/${trackId}/share`, {
     method: "POST",
   });
+}
+
+export async function getTrackQuality(
+  trackId: string,
+): Promise<TrackQualityResponse> {
+  return fetchJSON<TrackQualityResponse>(
+    `${BASE_URL}/tracks/${trackId}/quality`,
+  );
 }
