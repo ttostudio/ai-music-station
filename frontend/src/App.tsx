@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Player } from "./components/Player";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
+import { useElapsedTime } from "./hooks/useElapsedTime";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useBreakpoint } from "./hooks/useBreakpoint";
 import { resumeAudioContext } from "./components/AudioVisualizer";
@@ -16,7 +17,6 @@ export default function App() {
   const [volume, setVolume] = useState(0.8);
   const prevVolumeRef = useRef(0.8);
   const nowPlaying = useNowPlaying(activeSlug);
-  const elapsedMs = 0; // TODO: re-implement elapsed time tracking
 
   // New state for redesign
   const [activeTab, setActiveTab] = useState<"radio" | "tracks" | "likes">("radio");
@@ -32,6 +32,7 @@ export default function App() {
 
   // Shared audioRef — passed to Player and layouts
   const audioRef = useRef<HTMLAudioElement>(null);
+  const elapsedMs = useElapsedTime(audioRef, isPlaying);
 
   const togglePlay = useCallback(async () => {
     if (!audioRef.current || !streamUrl) return;
