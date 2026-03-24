@@ -1,6 +1,7 @@
 import { Play, Pause, Heart, Captions, Radio } from "lucide-react";
 import type { Track } from "../api/types";
 import { formatTime } from "../utils/lrc-parser";
+import { ShareButton } from "./ShareButton";
 
 interface Props {
   track: Track | null;
@@ -68,6 +69,9 @@ export function FloatingBar({
       >
         <Captions size={18} color={lyricsActive ? "#FFFFFF" : "#8b5cf6"} />
       </button>
+
+      {/* Share */}
+      <ShareButton trackId={track?.id ?? null} size={18} color="rgba(255,255,255,0.25)" className="fb-share-btn" />
 
       {/* Channel menu */}
       <button

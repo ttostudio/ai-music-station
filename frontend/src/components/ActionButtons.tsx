@@ -1,13 +1,14 @@
-import { Heart, Type, Share2 } from "lucide-react";
+import { Heart, Type } from "lucide-react";
+import { ShareButton } from "./ShareButton";
 
 interface Props {
   liked?: boolean;
+  trackId?: string | null;
   onLike: () => void;
   onLyrics: () => void;
-  onShare: () => void;
 }
 
-export function ActionButtons({ liked, onLike, onLyrics, onShare }: Props) {
+export function ActionButtons({ liked, trackId, onLike, onLyrics }: Props) {
   return (
     <div className="action-buttons">
       <button className="action-btn" onClick={onLike} aria-label={liked ? "いいね解除" : "いいね"}>
@@ -16,9 +17,7 @@ export function ActionButtons({ liked, onLike, onLyrics, onShare }: Props) {
       <button className="action-btn" onClick={onLyrics} aria-label="歌詞">
         <Type size={24} color="#8B8BA0" />
       </button>
-      <button className="action-btn" onClick={onShare} aria-label="シェア">
-        <Share2 size={24} color="#8B8BA0" />
-      </button>
+      <ShareButton trackId={trackId ?? null} size={24} />
     </div>
   );
 }

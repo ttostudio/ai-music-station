@@ -310,6 +310,10 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 /* ===== ACTION BUTTONS ===== */
 .action-buttons { display: flex; align-items: center; justify-content: center; gap: var(--space-10); padding: var(--space-4) 0; }
 .action-btn { background: none; border: none; cursor: pointer; padding: 10px; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.share-button-wrapper { position: relative; display: inline-flex; }
+.share-toast { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: rgba(34, 197, 94, 0.9); color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 6px; white-space: nowrap; pointer-events: none; }
+.fb-share-btn .action-btn { padding: var(--space-2); min-width: auto; min-height: auto; }
+.fb-share-btn .share-toast { font-size: 11px; }
 
 /* ===== KARAOKE SCREEN ===== */
 .karaoke-screen { display: flex; flex-direction: column; height: 100vh; background: var(--color-bg-base); }

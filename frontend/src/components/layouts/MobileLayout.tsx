@@ -79,7 +79,6 @@ export function MobileLayout({
           onSkipNext={onSkipNext}
           onLike={onLike}
           onLyrics={() => onScreenChange("karaoke")}
-          onShare={() => {}}
           liked={liked}
         />
       </div>
