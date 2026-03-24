@@ -1,32 +1,36 @@
 import { useState, useRef, useCallback } from "react";
-import { ChannelManager } from "./components/ChannelManager";
-import { ChannelSelector } from "./components/ChannelSelector";
-import { MediaDisplay } from "./components/MediaDisplay";
-import { NowPlaying } from "./components/NowPlaying";
 import { Player } from "./components/Player";
-import { RequestForm } from "./components/RequestForm";
-import { TrackHistory } from "./components/TrackHistory";
-import { TrackTitle } from "./components/TrackTitle";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useBreakpoint } from "./hooks/useBreakpoint";
 import { resumeAudioContext } from "./components/AudioVisualizer";
+import { MobileLayout } from "./components/layouts/MobileLayout";
+import { TabletLayout } from "./components/layouts/TabletLayout";
+import { DesktopLayout } from "./components/layouts/DesktopLayout";
 
 export default function App() {
   const { channels, loading, error } = useChannels();
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
-  const [showManager, setShowManager] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const prevVolumeRef = useRef(0.8);
-  const playerRef = useRef<HTMLDivElement>(null);
   const nowPlaying = useNowPlaying(activeSlug);
   const elapsedMs = 0; // TODO: re-implement elapsed time tracking
+
+  // New state for redesign
+  const [activeTab, setActiveTab] = useState<"radio" | "tracks" | "likes">("radio");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "nowplaying" | "karaoke" | "manager">("home");
+  const [showLyricsPanel, setShowLyricsPanel] = useState(false);
+  const [showChannelMenu, setShowChannelMenu] = useState(false);
+  const [liked, setLiked] = useState(false);
+
+  const breakpoint = useBreakpoint();
 
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
 
-  // Shared audioRef — passed to Player and MediaDisplay (AudioVisualizer)
+  // Shared audioRef — passed to Player and layouts
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const togglePlay = useCallback(async () => {
@@ -67,11 +71,36 @@ export default function App() {
     (index: number) => {
       if (index < channels.length) {
         setActiveSlug(channels[index].slug);
-        playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     },
     [channels],
   );
+
+  const handleSelectChannelBySlug = useCallback((slug: string) => {
+    setActiveSlug(slug);
+  }, []);
+
+  const handleSkipNext = useCallback(() => {
+    if (!activeSlug || channels.length === 0) return;
+    const activeChannels = channels.filter((c) => c.is_active);
+    const idx = activeChannels.findIndex((c) => c.slug === activeSlug);
+    if (idx >= 0 && idx < activeChannels.length - 1) {
+      setActiveSlug(activeChannels[idx + 1].slug);
+    }
+  }, [activeSlug, channels]);
+
+  const handleSkipPrev = useCallback(() => {
+    if (!activeSlug || channels.length === 0) return;
+    const activeChannels = channels.filter((c) => c.is_active);
+    const idx = activeChannels.findIndex((c) => c.slug === activeSlug);
+    if (idx > 0) {
+      setActiveSlug(activeChannels[idx - 1].slug);
+    }
+  }, [activeSlug, channels]);
+
+  const handleLike = useCallback(() => {
+    setLiked((v) => !v);
+  }, []);
 
   useKeyboardShortcuts({
     onTogglePlay: togglePlay,
@@ -83,122 +112,107 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-gray-400">チャンネルを読み込み中...</div>
+      <div className="loading-screen">
+        <div className="loading-text">チャンネルを読み込み中...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-red-400">{error}</div>
+      <div className="loading-screen">
+        <div className="error-text">{error}</div>
       </div>
     );
   }
 
   const durationMs = nowPlaying?.duration_ms ?? 0;
 
-  // Determine ambient glow class from active channel
-  const ambientClass = activeSlug
-    ? activeSlug.includes("lofi") || activeSlug.includes("lo-fi") ? "ambient-lofi"
-    : activeSlug.includes("anime") ? "ambient-anime"
-    : activeSlug.includes("jazz") ? "ambient-jazz"
-    : activeSlug.includes("game") ? "ambient-game"
-    : ""
-    : "";
-
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--bg-primary)" }}>
-      {/* Channel-aware ambient background glow */}
-      <div className={`ambient-glow ${ambientClass}`} />
-
-      <div className="relative z-10">
-        {/* Header */}
-        <header className="text-center pt-6 pb-2 slide-up px-4">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            AI Music Station
-          </h1>
-          <p className="mt-2" style={{ color: "var(--text-secondary)" }}>
-            AIが生成した音楽をライブ配信
-          </p>
-          <button
-            onClick={() => setShowManager((v) => !v)}
-            className="mt-3 text-sm px-4 py-1.5 rounded-full focus-ring"
-            style={{ color: "var(--text-secondary)", transition: "background-color var(--transition-normal) var(--ease-smooth)" }}
-            onMouseOver={(e) => ((e.target as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)")}
-            onMouseOut={(e) => ((e.target as HTMLButtonElement).style.background = "")}
-          >
-            {showManager ? "← ラジオに戻る" : "⚙️ チャンネル管理"}
-          </button>
-        </header>
-
-        {showManager ? (
-          <div className="max-w-2xl mx-auto px-4 py-4">
-            <ChannelManager onClose={() => setShowManager(false)} />
-          </div>
-        ) : (
-          <div className="app-layout">
-            {/* 左カラム */}
-            <aside className="left-column">
-              <ChannelSelector
-                channels={channels}
-                activeSlug={activeSlug}
-                onSelect={(slug) => {
-                  setActiveSlug(slug);
-                  playerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                }}
-              />
-
-              <div ref={playerRef}>
-                <Player
-                  streamUrl={streamUrl}
-                  channelName={activeChannel?.name ?? ""}
-                  nowPlaying={nowPlaying}
-                  elapsedMs={elapsedMs}
-                  durationMs={durationMs}
-                  audioRef={audioRef}
-                  volume={volume}
-                  onVolumeChange={setVolume}
-                  isPlaying={isPlaying}
-                  onTogglePlay={togglePlay}
-                />
-              </div>
-
-              {activeSlug && (
-                <div className="space-y-5 slide-up">
-                  <NowPlaying track={nowPlaying} activeSlug={activeSlug} />
-                  {nowPlaying && <TrackTitle track={nowPlaying} />}
-                  <RequestForm channelSlug={activeSlug} />
-                  <TrackHistory channelSlug={activeSlug} nowPlayingId={nowPlaying?.id} />
-                </div>
-              )}
-
-              <footer className="text-center text-xs pt-4 pb-2 space-y-1" style={{ color: "var(--text-muted)" }}>
-                <div className="shortcut-hints">
-                  <span>Space 再生/停止</span>
-                  <span>M ミュート</span>
-                  <span>&uarr;&darr; 音量</span>
-                  <span>1-9 CH切替</span>
-                </div>
-                <div>AI Music Station &mdash; ACE-Step v1.5 搭載</div>
-              </footer>
-            </aside>
-
-            {/* 右カラム */}
-            <main className="right-column">
-              <MediaDisplay
-                audioRef={audioRef}
-                isPlaying={isPlaying}
-                channelSlug={activeSlug}
-                lyrics={nowPlaying?.lyrics}
-                elapsedMs={elapsedMs}
-                durationMs={durationMs}
-              />
-            </main>
-          </div>
-        )}
+    <div className="app-root">
+      {/* Hidden audio element — Player.tsx manages audio tag with crossOrigin and preload */}
+      <div style={{ display: "none" }}>
+        <Player
+          streamUrl={streamUrl}
+          channelName={activeChannel?.name ?? ""}
+          nowPlaying={nowPlaying}
+          elapsedMs={elapsedMs}
+          durationMs={durationMs}
+          audioRef={audioRef}
+          volume={volume}
+          onVolumeChange={setVolume}
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+        />
       </div>
+
+      {/* Mobile layout */}
+      {breakpoint === "mobile" && (
+        <MobileLayout
+          channels={channels}
+          activeSlug={activeSlug}
+          activeChannel={activeChannel}
+          track={nowPlaying}
+          isPlaying={isPlaying}
+          elapsedMs={elapsedMs}
+          durationMs={durationMs}
+          audioRef={audioRef}
+          activeTab={activeTab}
+          currentScreen={currentScreen}
+          onTabChange={setActiveTab}
+          onScreenChange={setCurrentScreen}
+          onSelectChannel={handleSelectChannelBySlug}
+          onTogglePlay={togglePlay}
+          onSkipPrev={handleSkipPrev}
+          onSkipNext={handleSkipNext}
+          onLike={handleLike}
+          liked={liked}
+        />
+      )}
+
+      {/* Tablet layout */}
+      {breakpoint === "tablet" && (
+        <TabletLayout
+          channels={channels}
+          activeSlug={activeSlug}
+          activeChannel={activeChannel}
+          track={nowPlaying}
+          isPlaying={isPlaying}
+          elapsedMs={elapsedMs}
+          durationMs={durationMs}
+          audioRef={audioRef}
+          showChannelMenu={showChannelMenu}
+          onTogglePlay={togglePlay}
+          onLike={handleLike}
+          onSelectChannel={handleSelectChannelBySlug}
+          onChannelMenuToggle={() => setShowChannelMenu((v) => !v)}
+          onShowManager={() => setCurrentScreen("manager")}
+          liked={liked}
+        />
+      )}
+
+      {/* Desktop layout */}
+      {breakpoint === "desktop" && (
+        <DesktopLayout
+          channels={channels}
+          activeSlug={activeSlug}
+          activeChannel={activeChannel}
+          track={nowPlaying}
+          isPlaying={isPlaying}
+          elapsedMs={elapsedMs}
+          durationMs={durationMs}
+          audioRef={audioRef}
+          showLyricsPanel={showLyricsPanel}
+          showChannelMenu={showChannelMenu}
+          onTogglePlay={togglePlay}
+          onLike={handleLike}
+          onSelectChannel={handleSelectChannelBySlug}
+          onLyricsPanelToggle={() => setShowLyricsPanel((v) => !v)}
+          onChannelMenuToggle={() => setShowChannelMenu((v) => !v)}
+          onShowManager={() => setCurrentScreen("manager")}
+          liked={liked}
+        />
+      )}
     </div>
   );
 }
