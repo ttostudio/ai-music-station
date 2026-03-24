@@ -1,8 +1,6 @@
 """共有機能のセキュリティテスト"""
 from __future__ import annotations
 
-import hashlib
-
 from api.routers.shares import _escape_html, _hash_ip
 
 

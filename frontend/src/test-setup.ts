@@ -22,3 +22,10 @@ Object.defineProperty(window, "matchMedia", {
 window.HTMLMediaElement.prototype.load = () => {};
 window.HTMLMediaElement.prototype.play = () => Promise.resolve();
 window.HTMLMediaElement.prototype.pause = () => {};
+
+// jsdom does not implement ResizeObserver — mock globally
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as any;
