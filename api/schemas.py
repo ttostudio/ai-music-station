@@ -237,5 +237,48 @@ class TrackStatsResponse(BaseModel):
     plays_by_source: dict[str, int]
 
 
+# --- Quality Score ---
+
+class TrackQualityResponse(BaseModel):
+    track_id: uuid.UUID
+    score: float
+    auto_drafted: bool
+    duration_sec: float | None = None
+    bit_rate: int | None = None
+    sample_rate: int | None = None
+    mean_volume_db: float | None = None
+    max_volume_db: float | None = None
+    silence_ratio: float | None = None
+    dynamic_range_db: float | None = None
+    score_breakdown: dict[str, float] = Field(default_factory=dict)
+    scored_at: datetime
+
+
+class ChannelQualityStatsResponse(BaseModel):
+    channel_slug: str
+    threshold: float
+    total_scored: int
+    avg_score: float
+    auto_drafted_count: int
+    score_distribution: dict[str, int]
+    recent_scores: list[TrackQualityResponse]
+
+
+class QualityThresholdUpdateRequest(BaseModel):
+    threshold: float = Field(..., ge=0, le=100)
+
+
+class QualityThresholdUpdateResponse(BaseModel):
+    channel_slug: str
+    threshold: float
+
+
+class QualityScoreListResponse(BaseModel):
+    total: int
+    avg_score: float
+    auto_drafted_count: int
+    items: list[TrackQualityResponse]
+
+
 # Forward ref update
 RequestDetailResponse.model_rebuild()

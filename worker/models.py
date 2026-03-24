@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
@@ -54,6 +55,10 @@ class Channel(Base):
 
     content_type: Mapped[str] = mapped_column(
         String(20), default="music", server_default="music"
+    )
+
+    quality_threshold: Mapped[float] = mapped_column(
+        Float, default=30.0, server_default="30.0"
     )
 
     requests: Mapped[List["Request"]] = relationship(back_populates="channel")
@@ -137,6 +142,10 @@ class Track(Base):
     play_count: Mapped[int] = mapped_column(Integer, default=0)
     like_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_retired: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    quality_score: Mapped[Optional[float]] = mapped_column(Float)
+    quality_scored_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
     last_played_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True)
     )
@@ -151,6 +160,7 @@ class Track(Base):
 
     __table_args__ = (
         Index("idx_tracks_channel", "channel_id", "created_at"),
+        Index("idx_tracks_quality_score", "quality_score"),
     )
 
 
@@ -265,4 +275,37 @@ class TrackAnalytics(Base):
     __table_args__ = (
         Index("idx_track_analytics_track_created", "track_id", "created_at"),
         Index("idx_track_analytics_event_created", "event_type", "created_at"),
+    )
+
+
+class TrackQualityScore(Base):
+    __tablename__ = "track_quality_scores"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tracks.id", ondelete="CASCADE"), nullable=False
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    duration_sec: Mapped[Optional[float]] = mapped_column(Float)
+    bit_rate: Mapped[Optional[int]] = mapped_column(Integer)
+    sample_rate: Mapped[Optional[int]] = mapped_column(Integer)
+    mean_volume_db: Mapped[Optional[float]] = mapped_column(Float)
+    max_volume_db: Mapped[Optional[float]] = mapped_column(Float)
+    silence_ratio: Mapped[Optional[float]] = mapped_column(Float)
+    dynamic_range_db: Mapped[Optional[float]] = mapped_column(Float)
+    score_details: Mapped[Optional[dict]] = mapped_column(JSON)
+    auto_drafted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    track: Mapped["Track"] = relationship()
+
+    __table_args__ = (
+        Index("idx_tqs_track_id", "track_id"),
+        Index("idx_tqs_score", "score"),
     )

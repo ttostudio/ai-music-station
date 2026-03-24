@@ -8,6 +8,7 @@ from api.routers import (
     health,
     internal,
     podcasts,
+    quality,
     reactions,
     requests,
     shares,
@@ -25,3 +26,4 @@ app.include_router(podcasts.router)
 app.include_router(shares.router)
 app.include_router(analytics.router)
 app.include_router(internal.router)
+app.include_router(quality.router)
