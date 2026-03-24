@@ -19,7 +19,6 @@ interface Props {
   onSkipNext: () => void;
   onLike: () => void;
   onLyrics: () => void;
-  onShare: () => void;
   liked?: boolean;
 }
 
@@ -37,7 +36,6 @@ export function NowPlayingScreen({
   onSkipNext,
   onLike,
   onLyrics,
-  onShare,
   liked,
 }: Props) {
   const title = track ? (track.title || track.caption) : "";
@@ -81,7 +79,7 @@ export function NowPlayingScreen({
       />
 
       {/* Action buttons */}
-      <ActionButtons liked={liked} onLike={onLike} onLyrics={onLyrics} onShare={onShare} />
+      <ActionButtons liked={liked} trackId={track?.id} onLike={onLike} onLyrics={onLyrics} />
     </div>
   );
 }

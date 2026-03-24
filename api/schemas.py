@@ -207,5 +207,35 @@ class PodcastEpisodeListResponse(BaseModel):
     total: int
 
 
+# --- Share ---
+
+class ShareLinkResponse(BaseModel):
+    share_token: str
+    share_url: str
+    track_id: uuid.UUID
+
+
+# --- Analytics ---
+
+class PlayEventBody(BaseModel):
+    track_id: uuid.UUID
+    share_token: str | None = Field(
+        default=None,
+        pattern=r"^[a-zA-Z0-9_-]{0,64}$",
+    )
+
+
+class PlayEventResponse(BaseModel):
+    ok: bool
+
+
+class TrackStatsResponse(BaseModel):
+    track_id: uuid.UUID
+    play_count: int
+    share_count: int
+    like_count: int
+    plays_by_source: dict[str, int]
+
+
 # Forward ref update
 RequestDetailResponse.model_rebuild()

@@ -8,6 +8,7 @@ import type {
   ReactionResponse,
   ReactionStatusResponse,
   RequestResponse,
+  ShareLinkResponse,
   TrackListResponse,
 } from "./types";
 
@@ -116,5 +117,13 @@ export async function deleteChannel(
 ): Promise<ChannelDeleteResponse> {
   return fetchJSON<ChannelDeleteResponse>(`${BASE_URL}/channels/${slug}`, {
     method: "DELETE",
+  });
+}
+
+export async function createShareLink(
+  trackId: string,
+): Promise<ShareLinkResponse> {
+  return fetchJSON<ShareLinkResponse>(`${BASE_URL}/tracks/${trackId}/share`, {
+    method: "POST",
   });
 }

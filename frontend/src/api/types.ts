@@ -118,3 +118,10 @@ export interface TrackListResponse {
   tracks: Track[];
   total: number;
 }
+
+export interface ShareLinkResponse {
+  share_url: string;
+  slug: string;
+  track_id: string;
+  created_at: string;
+}
