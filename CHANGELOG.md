@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Added (Issue #20 — リクエスト UI + チャンネル追加)
+- `alembic/versions/008_add_channels.py`: 新チャンネル3つ追加
+  - `classical`（クラシック）— ピアノ・オーケストラ、BPM 60-120
+  - `electronic`（エレクトロニカ）— シンセ・アンビエント、BPM 110-150
+  - `bossanova`（ボサノバ）— ブラジルジャズ、BPM 80-110、日本語ボーカル
+- `frontend/src/components/RequestForm.tsx`: リクエストフォーム全面刷新
+  - チャンネル選択ドロップダウン
+  - ムード選択ピル（明るい / 落ち着いた / エネルギッシュ / 哀愁）
+  - 任意プロンプト入力テキストエリア
+  - `POST /api/generate` に送信
+  - 送信後に `RequestHistory` でステータス表示
+- `frontend/src/components/RequestHistory.tsx`: リクエスト履歴コンポーネント（新規）
+  - `GET /api/generate/{id}/status` を 5 秒ごとにポーリング
+  - ステータス表示（待機中 / 生成中 / 完了 / 失敗）+ キュー順位
+- `frontend/src/api/types.ts`: `GenerateRequestBody`, `RequestDetailResponse` 型追加
+- `frontend/src/api/client.ts`: `submitGenerate()`, `getGenerateStatus()` 関数追加
+- `frontend/src/styles.css`: ムードピル・ステータスバッジ・デスクトップリクエストパネルの CSS 追加
+- `MobileLayout.tsx`: ラジオタブのチャンネルグリッド下にリクエストフォームを統合
+- `TabletLayout.tsx`: 下部セクションにリクエストフォームを統合
+- `DesktopLayout.tsx`: 固定トグルボタン + フローティングパネルでリクエストフォームを統合
+
 ### Added (Issue #9 — ACE-Step 音楽生成統合)
 - `api/services/acestep_client.py`: ACE-Step REST API 正式クライアント
   - `AceStepClient.submit_job()` — POST /release_task でジョブ投入
