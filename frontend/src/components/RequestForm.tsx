@@ -1,46 +1,51 @@
 import { useState } from "react";
-import { createRequest } from "../api/client";
+import { submitGenerate } from "../api/client";
+import type { Channel } from "../api/types";
+import { RequestHistory } from "./RequestHistory";
+
+type Mood = "cheerful" | "calm" | "energetic" | "melancholy";
+
+const MOOD_LABELS: Record<Mood, string> = {
+  cheerful: "明るい",
+  calm: "落ち着いた",
+  energetic: "エネルギッシュ",
+  melancholy: "哀愁",
+};
 
 interface Props {
-  channelSlug: string;
+  channels: Channel[];
+  defaultSlug?: string;
 }
 
-export function RequestForm({ channelSlug }: Props) {
-  const [caption, setCaption] = useState("");
-  const [lyrics, setLyrics] = useState("");
-  const [mood, setMood] = useState("");
-  const [bpm, setBpm] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function RequestForm({ channels, defaultSlug }: Props) {
+  const activeChannels = channels.filter((c) => c.is_active);
+  const initialSlug = defaultSlug ?? (activeChannels[0]?.slug ?? "");
 
-  const useMood = mood.trim().length > 0;
+  const [channelSlug, setChannelSlug] = useState(initialSlug);
+  const [mood, setMood] = useState<Mood | "">("");
+  const [prompt, setPrompt] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submittedIds, setSubmittedIds] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!channelSlug) return;
     setSubmitting(true);
-    setSuccess(null);
     setError(null);
 
     try {
-      const body: Record<string, unknown> = {};
-      if (useMood) {
-        body.mood = mood.trim();
-      } else {
-        if (caption.trim()) body.caption = caption.trim();
-        if (lyrics.trim()) body.lyrics = lyrics.trim();
-      }
-      if (bpm) body.bpm = parseInt(bpm, 10);
+      const body: Parameters<typeof submitGenerate>[0] = { channel_slug: channelSlug };
+      if (mood) body.mood = mood;
+      if (prompt.trim()) body.caption = prompt.trim();
 
-      const result = await createRequest(channelSlug, body);
-      setSuccess(`リクエストを送信しました！ 待ち順: #${result.position}`);
-      setCaption("");
-      setLyrics("");
+      const result = await submitGenerate(body);
+      setSubmittedIds((prev) => [result.id, ...prev]);
+      setPrompt("");
       setMood("");
-      setBpm("");
-    } catch (e) {
+    } catch (err) {
       setError(
-        e instanceof Error ? e.message : "リクエストの送信に失敗しました",
+        err instanceof Error ? err.message : "リクエストの送信に失敗しました",
       );
     } finally {
       setSubmitting(false);
@@ -48,83 +53,76 @@ export function RequestForm({ channelSlug }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4 request-form-container">
-      <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-        トラックをリクエスト
-      </div>
-
-      <textarea
-        value={mood}
-        onChange={(e) => setMood(e.target.value)}
-        placeholder="雰囲気（例: 夕焼けの帰り道、ノスタルジック）"
-        rows={2}
-        className="w-full input-glass px-4 py-3 text-sm resize-none"
-      />
-
-      {!useMood && (
-        <>
-          <input
-            type="text"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="作りたい音楽を説明してください..."
-            className="w-full input-glass px-4 py-3 text-sm"
-          />
-
-          <textarea
-            value={lyrics}
-            onChange={(e) => setLyrics(e.target.value)}
-            placeholder="歌詞（任意、[Verse], [Chorus] タグ使用可）"
-            rows={3}
-            className="w-full input-glass px-4 py-3 text-sm resize-none"
-          />
-        </>
-      )}
-
-      {useMood && (
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          雰囲気を指定すると、説明・歌詞フィールドは無効になります
-        </p>
-      )}
-
-      <div className="flex gap-3 items-end">
-        <div>
-          <label className="text-xs block mb-1.5" style={{ color: "var(--text-secondary)" }}>BPM</label>
-          <input
-            type="number"
-            value={bpm}
-            onChange={(e) => setBpm(e.target.value)}
-            placeholder="自動"
-            min={30}
-            max={300}
-            className="w-20 input-glass px-3 py-2 text-sm"
-          />
+    <div className="request-panel">
+      <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4">
+        <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          トラックをリクエスト
         </div>
+
+        {/* Channel selector */}
+        <div>
+          <label className="text-xs block mb-1.5" style={{ color: "var(--text-secondary)" }}>
+            チャンネル
+          </label>
+          <select
+            value={channelSlug}
+            onChange={(e) => setChannelSlug(e.target.value)}
+            className="w-full input-glass px-3 py-2 text-sm"
+          >
+            {activeChannels.map((ch) => (
+              <option key={ch.slug} value={ch.slug}>
+                {ch.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Mood selector */}
+        <div>
+          <label className="text-xs block mb-2" style={{ color: "var(--text-secondary)" }}>
+            ムード（任意）
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(MOOD_LABELS) as Mood[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMood((prev) => (prev === m ? "" : m))}
+                className={`mood-pill ${mood === m ? "mood-pill-active" : ""}`}
+              >
+                {MOOD_LABELS[m]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Optional prompt */}
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="追加の指示（任意）例: 夕焼けの帰り道、ノスタルジック"
+          rows={2}
+          className="w-full input-glass px-4 py-3 text-sm resize-none"
+        />
 
         <button
           type="submit"
-          disabled={submitting}
-          className="btn-submit"
+          disabled={submitting || !channelSlug}
+          className="btn-submit w-full"
         >
           {submitting ? "送信中..." : "リクエスト送信"}
         </button>
-      </div>
 
-      {success && (
-        <div
-          className="text-sm px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400"
-          style={{ animation: "success-pop 0.4s var(--ease-bounce) forwards" }}
-        >
-          {success}
-        </div>
+        {error && (
+          <div className="text-sm px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+            {error}
+          </div>
+        )}
+      </form>
+
+      {submittedIds.length > 0 && (
+        <RequestHistory requestIds={submittedIds} />
       )}
-      {error && (
-        <div
-          className="text-sm px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 slide-up"
-        >
-          {error}
-        </div>
-      )}
-    </form>
+    </div>
   );
 }

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import type { Channel, Track } from "../../api/types";
 import { TheaterView } from "../TheaterView";
 import { FloatingBar } from "../FloatingBar";
 import { ChannelMenu } from "../ChannelMenu";
 import { LyricsPanel } from "../LyricsPanel";
+import { RequestForm } from "../RequestForm";
 
 interface Props {
   channels: Channel[];
@@ -45,6 +47,7 @@ export function DesktopLayout({
 }: Props) {
   const channelName = activeChannel?.name ?? "";
   const lyrics = track?.lyrics ?? "";
+  const [showRequestPanel, setShowRequestPanel] = useState(false);
 
   return (
     <div className="desktop-layout">
@@ -93,6 +96,22 @@ export function DesktopLayout({
             onManage={onShowManager}
             onClose={onChannelMenuToggle}
           />
+        </div>
+      )}
+
+      {/* Request panel toggle button */}
+      <button
+        className="desktop-request-toggle"
+        onClick={() => setShowRequestPanel((v) => !v)}
+        aria-label="リクエストパネルを開く"
+      >
+        ♪ リクエスト
+      </button>
+
+      {/* Request panel */}
+      {showRequestPanel && (
+        <div className="desktop-request-panel">
+          <RequestForm channels={channels} defaultSlug={activeSlug ?? undefined} />
         </div>
       )}
     </div>

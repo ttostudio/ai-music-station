@@ -4,9 +4,11 @@ import type {
   ChannelFullResponse,
   ChannelListResponse,
   CreateRequestBody,
+  GenerateRequestBody,
   NowPlayingResponse,
   ReactionResponse,
   ReactionStatusResponse,
+  RequestDetailResponse,
   RequestResponse,
   ShareLinkResponse,
   TrackListResponse,
@@ -134,5 +136,23 @@ export async function getTrackQuality(
 ): Promise<TrackQualityResponse> {
   return fetchJSON<TrackQualityResponse>(
     `${BASE_URL}/tracks/${trackId}/quality`,
+  );
+}
+
+export async function submitGenerate(
+  body: GenerateRequestBody,
+): Promise<RequestResponse> {
+  return fetchJSON<RequestResponse>(`${BASE_URL}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getGenerateStatus(
+  requestId: string,
+): Promise<RequestDetailResponse> {
+  return fetchJSON<RequestDetailResponse>(
+    `${BASE_URL}/generate/${requestId}/status`,
   );
 }

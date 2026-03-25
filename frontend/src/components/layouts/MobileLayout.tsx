@@ -5,6 +5,7 @@ import { NowPlayingScreen } from "../NowPlayingScreen";
 import { KaraokeScreen } from "../KaraokeScreen";
 import { ChannelManager } from "../ChannelManager";
 import { TrackHistory } from "../TrackHistory";
+import { RequestForm } from "../RequestForm";
 import { getChannelGradient, getChannelThemeKey } from "../../utils/lrc-parser";
 import { Settings, Music, Heart } from "lucide-react";
 
@@ -148,6 +149,9 @@ export function MobileLayout({
                 );
               })}
             </div>
+
+            {/* Request form */}
+            <RequestForm channels={channels} defaultSlug={activeSlug ?? undefined} />
           </div>
         )}
 

@@ -487,6 +487,18 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .media-display-split { display: flex; flex-direction: column; }
 .media-upper { position: relative; flex: 1; min-height: 280px; }
 
+/* ===== Request UI ===== */
+.request-panel { margin-top: 1rem; }
+.desktop-request-toggle { position: fixed; bottom: 5.5rem; right: 1.5rem; z-index: 40; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; color: white; background: linear-gradient(135deg, var(--color-accent), #7c3aed); box-shadow: 0 4px 12px rgba(99,102,241,0.4); transition: transform 0.2s ease; }
+.desktop-request-toggle:hover { transform: translateY(-2px); }
+.desktop-request-panel { position: fixed; bottom: 8rem; right: 1.5rem; z-index: 39; width: 22rem; max-height: calc(100vh - 10rem); overflow-y: auto; }
+.mood-pill { padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--border-glass); color: var(--text-secondary); background: rgba(255, 255, 255, 0.05); transition: all 0.2s ease; }
+.mood-pill:hover { border-color: var(--color-accent); color: var(--text-primary); }
+.mood-pill-active { background: linear-gradient(135deg, var(--color-accent), #7c3aed); border-color: transparent; color: white; }
+.status-badge { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em; }
+.status-badge-pulse { animation: status-pulse 1.5s ease-in-out infinite; }
+@keyframes status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
 /* ===== prefers-reduced-motion ===== */
 @media (prefers-reduced-motion: reduce) {
   *, .floating-bar, .channel-menu, .lyrics-panel-overlay,

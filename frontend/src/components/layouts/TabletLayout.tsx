@@ -3,6 +3,7 @@ import { TheaterView } from "../TheaterView";
 import { FloatingBar } from "../FloatingBar";
 import { ChannelMenu } from "../ChannelMenu";
 import { LyricsScrollPanel } from "../LyricsScrollPanel";
+import { RequestForm } from "../RequestForm";
 
 interface Props {
   channels: Channel[];
@@ -81,13 +82,16 @@ export function TabletLayout({
         </div>
       </div>
 
-      {/* Lower lyrics half */}
+      {/* Lower: lyrics + request form */}
       <div className="tablet-lower">
         {lyrics ? (
           <LyricsScrollPanel lyrics={lyrics} elapsedMs={elapsedMs} durationMs={durationMs} variant="tablet" />
         ) : (
           <div className="tablet-no-lyrics">♪ インストゥルメンタル</div>
         )}
+        <div className="px-4 pb-4">
+          <RequestForm channels={channels} defaultSlug={activeSlug ?? undefined} />
+        </div>
       </div>
     </div>
   );
