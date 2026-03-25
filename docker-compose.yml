@@ -19,6 +19,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   # --- Database Migrations ---
   migrate:
@@ -32,6 +37,10 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # --- Backend API ---
   api:
@@ -54,6 +63,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   # --- Icecast2 Streaming Server ---
   icecast:
@@ -68,6 +82,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
 
   # --- Liquidsoap 統合ストリーミング（全チャンネル動的対応） ---
   liquidsoap:
@@ -90,6 +109,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # --- Frontend ---
   frontend:
@@ -100,6 +124,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # --- Reverse Proxy ---
   caddy:
@@ -120,6 +149,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
 
 volumes:
   pgdata:

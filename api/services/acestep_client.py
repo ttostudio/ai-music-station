@@ -180,7 +180,15 @@ class AceStepClient:
 
         resp.raise_for_status()
         data = resp.json()
-        job_data = data.get("data", {}).get(job_id, {})
+        # data["data"] は list（完了したジョブの配列）または空リスト
+        results = data.get("data", [])
+        if isinstance(results, list) and len(results) > 0:
+            # リストの中から該当ジョブを探す
+            job_data = next((r for r in results if r.get("task_id") == job_id), {})
+        elif isinstance(results, dict):
+            job_data = results.get(job_id, {})
+        else:
+            job_data = {}
         raw_status = job_data.get("status", "pending")
 
         # ACE-Step の "success" を内部統一ステータス "completed" にマッピング
