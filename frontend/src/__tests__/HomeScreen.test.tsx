@@ -64,10 +64,10 @@ describe("HomeScreen (MobileLayout RADIO tab)", () => {
   });
 
   it("UT-HS-02: チャンネルカードグリッドが表示される", () => {
-    const { container, getByText } = render(<MobileLayout {...defaultProps} />);
+    const { container, getAllByText } = render(<MobileLayout {...defaultProps} />);
     expect(container.querySelector(".mobile-channel-grid")).toBeInTheDocument();
-    expect(getByText("Anime Songs")).toBeInTheDocument();
-    expect(getByText("Jazz Vibes")).toBeInTheDocument();
+    expect(getAllByText("Anime Songs").length).toBeGreaterThan(0);
+    expect(getAllByText("Jazz Vibes").length).toBeGreaterThan(0);
   });
 
   it("UT-HS-03: チャンネル選択でonSelectChannelが呼ばれる", () => {

@@ -143,3 +143,40 @@ export interface ShareLinkResponse {
   track_id: string;
   created_at: string;
 }
+
+export interface GenerateRequestBody {
+  channel_slug: string;
+  mood?: string;
+  caption?: string;
+  lyrics?: string;
+  bpm?: number;
+  duration?: number;
+  music_key?: string;
+}
+
+export interface RequestDetailResponse {
+  id: string;
+  channel_slug: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  mood: string | null;
+  caption: string | null;
+  lyrics: string | null;
+  bpm: number | null;
+  duration: number | null;
+  music_key: string | null;
+  position: number | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  track: {
+    id: string;
+    caption: string;
+    duration_ms: number | null;
+    bpm: number | null;
+    music_key: string | null;
+    instrumental: boolean | null;
+    play_count: number;
+    created_at: string;
+  } | null;
+}
