@@ -280,5 +280,27 @@ class QualityScoreListResponse(BaseModel):
     items: list[TrackQualityResponse]
 
 
+# --- Generate status ---
+
+class GenerateStatusResponse(BaseModel):
+    channel_slug: str
+    stock_count: int
+    pending_count: int
+    processing_count: int
+    min_stock: int
+    max_stock: int
+    auto_generate: bool
+
+
+class GenerateRequestBody(BaseModel):
+    channel_slug: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-z0-9-]+$')
+    mood: str | None = Field(None, max_length=500)
+    caption: str | None = Field(None, max_length=1000)
+    lyrics: str | None = Field(None, max_length=5000)
+    bpm: int | None = Field(None, ge=30, le=300)
+    duration: int | None = Field(None, ge=10, le=600)
+    music_key: str | None = Field(None, max_length=10)
+
+
 # Forward ref update
 RequestDetailResponse.model_rebuild()
