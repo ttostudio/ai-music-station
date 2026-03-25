@@ -153,70 +153,29 @@ class QueueConsumer:
             params.duration,
         )
 
-        # --- ジョブ投入（リトライ付き）---
-        job_id = await self._submit_with_retry(acestep_params)
-
-        # ace_step_job_id を DB に保存
-        await session.execute(
-            update(Request)
-            .where(Request.id == request.id)
-            .values(
-                ace_step_job_id=job_id,
-                ace_step_submitted_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-            )
-        )
-        await session.commit()
-
-        logger.info("ACE-Step job submitted: job_id=%s request_id=%s", job_id, request.id)
-
-        # --- ポーリングループ ---
-        poll_interval = settings.acestep_poll_interval
-        max_polls = settings.acestep_max_poll_count
-        result = None
-        for poll_count in range(1, max_polls + 1):
-            await asyncio.sleep(poll_interval)
-            try:
-                result = await self.client.poll_result(job_id)
-            except AceStepError as exc:
-                logger.warning("Poll error (count=%d): %s", poll_count, exc)
-                continue
-
-            if result.status == "completed":
-                break
-            if result.status == "failed":
-                raise GenerationError(
-                    f"ACE-Step 生成失敗: {result.error or 'unknown error'}"
-                )
-            # pending / processing は継続
-        else:
-            raise GenerationTimeoutError(
-                f"生成タイムアウト（{max_polls} 回ポーリング / {max_polls * poll_interval / 60:.0f} 分）"
-            )
-
-        # ポーリング回数を DB に記録
-        await session.execute(
-            update(Request)
-            .where(Request.id == request.id)
-            .values(
-                ace_step_poll_count=poll_count,
-                updated_at=datetime.now(timezone.utc),
-            )
-        )
-        await session.commit()
-
-        if not result or not result.audio_path:
-            raise GenerationError("音声パスが空です")
-
-        # --- 音声ファイルダウンロード ---
+        # --- 同期生成（/v1/chat/completions） ---
+        # submit_job + poll + download を1ステップに統合
         channel_dir = self.tracks_dir / channel.slug
         channel_dir.mkdir(parents=True, exist_ok=True)
         track_id = uuid.uuid4()
         file_path = f"{channel.slug}/{track_id}.mp3"
         full_path = self.tracks_dir / file_path
 
-        file_size = await self.client.download_audio(result.audio_path, full_path)
-        logger.info("Audio downloaded: %s (%d bytes)", file_path, file_size)
+        await session.execute(
+            update(Request)
+            .where(Request.id == request.id)
+            .values(
+                ace_step_submitted_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.commit()
+
+        logger.info("ACE-Step sync generation started: request_id=%s", request.id)
+
+        result = await self.client.generate_sync(acestep_params, full_path)
+        file_size = full_path.stat().st_size
+        logger.info("Audio generated: %s (%d bytes)", file_path, file_size)
 
         # duration / bpm / key をレスポンスまたは入力から取得
         duration_ms = int((result.duration or params.duration) * 1000)
@@ -247,7 +206,7 @@ class QueueConsumer:
             cfg_scale=params.cfg_scale,
             seed=params.seed,
             generation_model="acestep-v15-turbo",
-            ace_step_job_id=job_id,
+            ace_step_job_id=None,  # 同期生成方式では job_id なし
         )
         session.add(track)
 

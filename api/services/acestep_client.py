@@ -1,9 +1,11 @@
 """ACE-Step REST API クライアント（正式実装）。
 
 接続先: ACESTEP_API_URL 環境変数（デフォルト: http://host.docker.internal:8001）
+同期生成方式: /v1/chat/completions を使用（submit+poll ではなく1リクエストで完了）
 """
 from __future__ import annotations
 
+import base64
 import logging
 import re
 import urllib.parse
@@ -136,6 +138,101 @@ class AceStepClient:
             return resp.status_code == 200
         except Exception:
             return False
+
+    async def generate_sync(self, params: dict, dest_path: Path) -> AceStepJobResult:
+        """POST /v1/chat/completions で同期的に音楽を生成し、MP3 を保存する。
+
+        /v1/chat/completions はリクエストを受け付けてから生成完了まで
+        ブロックし、base64 エンコードされた音声データをレスポンスに含む。
+
+        Args:
+            params: prompt, audio_duration, infer_step 等の生成パラメータ。
+            dest_path: 生成された MP3 の保存先。
+
+        Returns:
+            AceStepJobResult（status="completed" + メタデータ）。
+
+        Raises:
+            AceStepError: 接続エラー、タイムアウト、生成失敗。
+        """
+        prompt = params.get("prompt", "instrumental")
+        body = {
+            "model": params.get("model", "ace-step-v1.5-turbo"),
+            "messages": [{"role": "user", "content": prompt}],
+            "audio_duration": params.get("audio_duration", 10),
+            "infer_step": params.get("infer_step", 4),
+        }
+        # Optional params
+        if params.get("lyrics"):
+            body["lyrics"] = params["lyrics"]
+        if params.get("bpm"):
+            body["bpm"] = params["bpm"]
+
+        try:
+            # 生成には数分かかるため長いタイムアウトを設定
+            resp = await self._client.post(
+                f"{self._base_url}/v1/chat/completions",
+                json=body,
+                timeout=600.0,
+            )
+        except httpx.ConnectError as exc:
+            raise AceStepError(f"ACE-Step 接続失敗: {exc}") from exc
+        except httpx.TimeoutException as exc:
+            raise AceStepTimeoutError(f"ACE-Step 生成タイムアウト: {exc}") from exc
+
+        if resp.status_code == 429:
+            raise AceStepQueueFullError("ACE-Step キューが満杯です")
+        resp.raise_for_status()
+
+        data = resp.json()
+        choices = data.get("choices", [])
+        if not choices:
+            raise AceStepError(f"ACE-Step レスポンスに choices がありません: {data}")
+
+        message = choices[0].get("message", {})
+        audio_list = message.get("audio", [])
+
+        if not audio_list:
+            raise AceStepError("ACE-Step レスポンスに audio データがありません")
+
+        # base64 audio を取得してファイルに保存
+        audio_entry = audio_list[0]
+        audio_url = audio_entry.get("audio_url", {}).get("url", "")
+
+        if audio_url.startswith("data:audio/"):
+            # data:audio/mpeg;base64,<data> 形式
+            b64_data = audio_url.split(",", 1)[1] if "," in audio_url else ""
+            audio_bytes = base64.b64decode(b64_data)
+        else:
+            raise AceStepError(f"不明な audio URL 形式: {audio_url[:100]}")
+
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        dest_path.write_bytes(audio_bytes)
+        file_size = len(audio_bytes)
+        logger.info("Audio saved: %s (%d bytes)", dest_path, file_size)
+
+        # メタデータをレスポンスから抽出
+        content = message.get("content", "")
+        bpm = None
+        key_scale = None
+        duration = params.get("audio_duration")
+        for line in content.split("\n"):
+            if "BPM" in line and ":" in line:
+                try:
+                    bpm = int(line.split(":")[-1].strip())
+                except ValueError:
+                    pass
+            if "Key" in line and ":" in line:
+                key_scale = line.split(":")[-1].strip()
+
+        return AceStepJobResult(
+            status="completed",
+            audio_path=str(dest_path),
+            duration=float(duration) if duration else None,
+            bpm=bpm,
+            key_scale=key_scale,
+            lyrics=params.get("lyrics"),
+        )
 
     async def submit_job(self, params: dict) -> str:
         """POST /release_task でジョブを投入し、task_id を返す。
