@@ -12,7 +12,19 @@ from pathlib import Path
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from worker.acestep_client import ACEStepClient, GenerationError, GenerationParams
+from api.services.acestep_client import (
+    AceStepClient,
+    AceStepError,
+    AceStepQueueFullError,
+    AceStepTimeoutError,
+    sanitize_bpm,
+    sanitize_duration,
+    sanitize_lyrics,
+    sanitize_music_key,
+    sanitize_prompt,
+    sanitize_vocal_language,
+)
+from worker.acestep_client import GenerationError, GenerationParams, GenerationTimeoutError
 from worker.auto_generator import run_auto_generation
 from worker.channel_presets import get_preset
 from worker.config import settings
@@ -36,12 +48,15 @@ class QueueConsumer:
     def __init__(
         self,
         session_factory,
-        client: ACEStepClient | None = None,
+        client: AceStepClient | None = None,
         tracks_dir: str = settings.generated_tracks_dir,
         worker_id: str | None = None,
     ):
         self.session_factory = session_factory
-        self.client = client or ACEStepClient()
+        self.client = client or AceStepClient(
+            base_url=settings.acestep_api_url,
+            timeout=settings.acestep_timeout,
+        )
         self.tracks_dir = Path(tracks_dir)
         self.worker_id = worker_id or settings.worker_id or platform.node()
         self.quality_scorer = QualityScorer()
@@ -79,7 +94,6 @@ class QueueConsumer:
         preset = get_preset(channel.slug)
         base_caption = preset.prompt_template if preset else channel.prompt_template
 
-        # タイトルプレフィックスを除去してACE-Step用キャプションを取得
         _, clean_caption = _split_title_caption(request.caption)
         caption = clean_caption or base_caption
         if clean_caption and preset:
@@ -106,12 +120,31 @@ class QueueConsumer:
             vocal_language=vocal_language,
         )
 
+    def _build_acestep_params(self, params: GenerationParams) -> dict:
+        """GenerationParams を ACE-Step POST /release_task のリクエスト dict に変換する。"""
+        return {
+            "prompt": sanitize_prompt(params.caption),
+            "lyrics": sanitize_lyrics(params.lyrics or ""),
+            "bpm": sanitize_bpm(params.bpm),
+            "key_scale": sanitize_music_key(params.key) or "",
+            "audio_duration": sanitize_duration(params.duration) or 180.0,
+            "vocal_language": sanitize_vocal_language(params.vocal_language),
+            "inference_steps": params.num_steps,
+            "guidance_scale": params.cfg_scale,
+            "use_random_seed": params.seed is None,
+            "audio_format": "mp3",
+            "task_type": "text2music",
+            "thinking": False,
+        }
+
     async def process_request(self, session: AsyncSession, request: Request) -> Track:
         channel = await session.get(Channel, request.channel_id)
         if channel is None:
             raise ValueError(f"Channel {request.channel_id} not found")
 
         params = self.build_generation_params(request, channel)
+        acestep_params = self._build_acestep_params(params)
+
         logger.info(
             "Generating track for channel=%s caption='%s' bpm=%s duration=%s",
             channel.slug,
@@ -120,15 +153,75 @@ class QueueConsumer:
             params.duration,
         )
 
-        result = await self.client.generate(params)
+        # --- ジョブ投入（リトライ付き）---
+        job_id = await self._submit_with_retry(acestep_params)
 
+        # ace_step_job_id を DB に保存
+        await session.execute(
+            update(Request)
+            .where(Request.id == request.id)
+            .values(
+                ace_step_job_id=job_id,
+                ace_step_submitted_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.commit()
+
+        logger.info("ACE-Step job submitted: job_id=%s request_id=%s", job_id, request.id)
+
+        # --- ポーリングループ ---
+        poll_interval = settings.acestep_poll_interval
+        max_polls = settings.acestep_max_poll_count
+        result = None
+        for poll_count in range(1, max_polls + 1):
+            await asyncio.sleep(poll_interval)
+            try:
+                result = await self.client.poll_result(job_id)
+            except AceStepError as exc:
+                logger.warning("Poll error (count=%d): %s", poll_count, exc)
+                continue
+
+            if result.status == "completed":
+                break
+            if result.status == "failed":
+                raise GenerationError(
+                    f"ACE-Step 生成失敗: {result.error or 'unknown error'}"
+                )
+            # pending / processing は継続
+        else:
+            raise GenerationTimeoutError(
+                f"生成タイムアウト（{max_polls} 回ポーリング / {max_polls * poll_interval / 60:.0f} 分）"
+            )
+
+        # ポーリング回数を DB に記録
+        await session.execute(
+            update(Request)
+            .where(Request.id == request.id)
+            .values(
+                ace_step_poll_count=poll_count,
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.commit()
+
+        if not result or not result.audio_path:
+            raise GenerationError("音声パスが空です")
+
+        # --- 音声ファイルダウンロード ---
         channel_dir = self.tracks_dir / channel.slug
         channel_dir.mkdir(parents=True, exist_ok=True)
         track_id = uuid.uuid4()
-        file_path = f"{channel.slug}/{track_id}.flac"
+        file_path = f"{channel.slug}/{track_id}.mp3"
         full_path = self.tracks_dir / file_path
-        full_path.write_bytes(result.audio_data)
-        file_size = os.path.getsize(full_path)
+
+        file_size = await self.client.download_audio(result.audio_path, full_path)
+        logger.info("Audio downloaded: %s (%d bytes)", file_path, file_size)
+
+        # duration / bpm / key をレスポンスまたは入力から取得
+        duration_ms = int((result.duration or params.duration) * 1000)
+        bpm = result.bpm or params.bpm
+        music_key = result.key_scale or params.key
 
         # キャプションからタイトルを抽出
         title, _ = _split_title_caption(request.caption)
@@ -141,18 +234,20 @@ class QueueConsumer:
             channel_id=channel.id,
             file_path=file_path,
             file_size=file_size,
-            duration_ms=result.duration_ms,
-            sample_rate=result.sample_rate,
+            duration_ms=duration_ms,
+            sample_rate=44100,
             title=title,
             mood=request.mood,
             caption=params.caption,
             lyrics=params.lyrics,
-            bpm=params.bpm,
-            music_key=params.key,
+            bpm=bpm,
+            music_key=music_key,
             instrumental=params.instrumental,
             num_steps=params.num_steps,
             cfg_scale=params.cfg_scale,
-            seed=result.seed,
+            seed=params.seed,
+            generation_model="acestep-v15-turbo",
+            ace_step_job_id=job_id,
         )
         session.add(track)
 
@@ -168,7 +263,7 @@ class QueueConsumer:
         await session.commit()
         logger.info("Track generated: %s (%d bytes)", file_path, file_size)
 
-        # 品質スコアリング（fire-and-forget: エラーがあっても生成フローを止めない）
+        # 品質スコアリング（fire-and-forget）
         try:
             threshold = channel.quality_threshold if hasattr(channel, "quality_threshold") else 30.0
             await self.quality_scorer.score_track(
@@ -178,10 +273,36 @@ class QueueConsumer:
                 channel_threshold=threshold,
             )
             await session.commit()
-        except Exception as e:
-            logger.warning("Quality scoring failed for track %s: %s", track.id, e)
+        except Exception as exc:
+            logger.warning("Quality scoring failed for track %s: %s", track.id, exc)
 
         return track
+
+    async def _submit_with_retry(self, params: dict) -> str:
+        """ACE-Step へのジョブ投入を指数バックオフでリトライする。"""
+        backoff_seconds = [5.0, 15.0, 45.0]
+        last_error: Exception | None = None
+        for attempt, wait in enumerate([0.0] + backoff_seconds):
+            if wait:
+                await asyncio.sleep(wait)
+            try:
+                return await self.client.submit_job(params)
+            except AceStepQueueFullError:
+                # キュー満杯は 30 秒待機して最大 5 回リトライ
+                if attempt < 5:
+                    await asyncio.sleep(30.0)
+                    try:
+                        return await self.client.submit_job(params)
+                    except AceStepQueueFullError as exc:
+                        last_error = exc
+                        continue
+            except AceStepError as exc:
+                last_error = exc
+                continue
+
+        raise GenerationError(
+            f"ACE-Step ジョブ投入失敗（{len(backoff_seconds) + 1} 回試行）: {last_error}"
+        )
 
     async def fail_request(self, session: AsyncSession, request_id, error_msg: str):
         await session.execute(
@@ -203,13 +324,13 @@ class QueueConsumer:
             try:
                 await self.process_request(session, request)
                 return True
-            except GenerationError as e:
-                logger.error("Generation failed for request %s: %s", request.id, e)
-                await self.fail_request(session, request.id, str(e))
+            except (GenerationError, AceStepError) as exc:
+                logger.error("Generation failed for request %s: %s", request.id, exc)
+                await self.fail_request(session, request.id, str(exc))
                 return True
-            except Exception as e:
+            except Exception as exc:
                 logger.exception("Unexpected error processing request %s", request.id)
-                await self.fail_request(session, request.id, str(e))
+                await self.fail_request(session, request.id, str(exc))
                 return True
 
     async def _get_active_channels(self, session: AsyncSession) -> list[Channel]:
@@ -224,7 +345,6 @@ class QueueConsumer:
         async with self.session_factory() as session:
             channels = await self._get_active_channels(session)
             for ch in channels:
-                # トラック数が5件未満のチャンネルはスキップ
                 count_result = await session.execute(
                     select(func.count(Track.id)).where(
                         Track.channel_id == ch.id,
@@ -244,7 +364,6 @@ class QueueConsumer:
         async with self.session_factory() as session:
             channels = await self._get_active_channels(session)
             for ch in channels:
-                # トラック数が5件未満のチャンネルはスキップ
                 count_result = await session.execute(
                     select(func.count(Track.id)).where(
                         Track.channel_id == ch.id,
@@ -260,9 +379,9 @@ class QueueConsumer:
             "Worker %s starting poll loop (interval=%.1fs)",
             self.worker_id, settings.poll_interval,
         )
-        playlist_interval = 5 * 60  # 5分
+        playlist_interval = 5 * 60   # 5分
         retirement_interval = 10 * 60  # 10分
-        auto_gen_interval = 60  # 60秒
+        auto_gen_interval = 60         # 60秒
         last_playlist_update = 0.0
         last_retirement_run = 0.0
         last_auto_gen_run = 0.0
@@ -271,7 +390,6 @@ class QueueConsumer:
             try:
                 now = asyncio.get_event_loop().time()
 
-                # プレイリスト更新（5分間隔）
                 if now - last_playlist_update >= playlist_interval:
                     try:
                         await self._run_playlist_update()
@@ -279,7 +397,6 @@ class QueueConsumer:
                         logger.exception("プレイリスト更新エラー")
                     last_playlist_update = now
 
-                # 棚卸し実行（10分間隔）
                 if now - last_retirement_run >= retirement_interval:
                     try:
                         await self._run_track_retirement()
@@ -287,7 +404,6 @@ class QueueConsumer:
                         logger.exception("棚卸しエラー")
                     last_retirement_run = now
 
-                # 自動生成（60秒間隔）
                 if now - last_auto_gen_run >= auto_gen_interval:
                     try:
                         await run_auto_generation(self.session_factory)

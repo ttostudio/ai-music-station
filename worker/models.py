@@ -92,6 +92,13 @@ class Request(Base):
         DateTime(timezone=True)
     )
     error_message: Mapped[Optional[str]] = mapped_column(Text)
+    ace_step_job_id: Mapped[Optional[str]] = mapped_column(String(200))
+    ace_step_submitted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    ace_step_poll_count: Mapped[Optional[int]] = mapped_column(
+        Integer, default=0
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -149,6 +156,8 @@ class Track(Base):
     last_played_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True)
     )
+    generation_model: Mapped[Optional[str]] = mapped_column(String(100))
+    ace_step_job_id: Mapped[Optional[str]] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

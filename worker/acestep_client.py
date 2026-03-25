@@ -1,25 +1,34 @@
+"""ACE-Step クライアント — api.services.acestep_client への互換シム。
+
+worker パッケージは api.services.acestep_client の AceStepClient を使用する。
+このモジュールは後方互換のため GenerationParams / GenerationResult を提供し、
+ACEStepClient を AceStepClient のエイリアスとして再エクスポートする。
+"""
 from __future__ import annotations
 
-import base64
-import json
-import random
 from dataclasses import dataclass
 
-import httpx
+from api.services.acestep_client import (  # noqa: F401
+    AceStepClient,
+    AceStepError as GenerationError,
+    AceStepQueueFullError,
+    AceStepTimeoutError as GenerationTimeoutError,
+    sanitize_bpm,
+    sanitize_duration,
+    sanitize_lyrics,
+    sanitize_music_key,
+    sanitize_prompt,
+    sanitize_vocal_language,
+)
 
-from worker.config import settings
-
-
-class GenerationError(Exception):
-    pass
-
-
-class GenerationTimeoutError(GenerationError):
-    pass
+# Legacy alias: 既存コードは ACEStepClient 名でも参照できる
+ACEStepClient = AceStepClient
 
 
 @dataclass
 class GenerationParams:
+    """Worker → ACE-Step パラメータ転送用 DTO。"""
+
     caption: str
     lyrics: str | None = None
     instrumental: bool = True
@@ -35,156 +44,9 @@ class GenerationParams:
 
 @dataclass
 class GenerationResult:
+    """Worker 内部での生成結果 DTO（後方互換）。"""
+
     audio_data: bytes
     sample_rate: int
     seed: int
     duration_ms: int
-
-
-def _build_prompt(params: GenerationParams) -> str:
-    """Build a natural language prompt for ACE-Step from generation params."""
-    parts = [params.caption]
-    if params.bpm is not None:
-        parts.append(f"BPM: {params.bpm}")
-    if params.key:
-        parts.append(f"Key: {params.key}")
-    if params.instrumental:
-        parts.append("Instrumental")
-    if params.lyrics:
-        parts.append(f"Lyrics: {params.lyrics}")
-    if params.duration:
-        parts.append(f"Duration: {params.duration}s")
-    return ". ".join(parts)
-
-
-class ACEStepClient:
-    def __init__(
-        self,
-        base_url: str = settings.acestep_api_url,
-        timeout: int = settings.acestep_timeout,
-        retries: int = settings.acestep_retries,
-    ):
-        self.base_url = base_url
-        self.timeout = timeout
-        self.retries = retries
-
-    async def generate(self, params: GenerationParams) -> GenerationResult:
-        seed = params.seed if params.seed is not None else random.randint(0, 2**31 - 1)
-
-        # OpenRouter-compatible chat completions format
-        payload = {
-            "model": "ace-step-v1.5",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": _build_prompt(params),
-                }
-            ],
-            "stream": False,
-        }
-
-        last_error: Exception | None = None
-        for attempt in range(self.retries):
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.post(
-                        f"{self.base_url}/v1/chat/completions",
-                        json=payload,
-                    )
-                    if response.status_code == 503:
-                        last_error = GenerationError(f"Service unavailable (attempt {attempt + 1})")
-                        continue
-                    response.raise_for_status()
-
-                    data = response.json()
-                    audio_data = self._extract_audio(data)
-                    return GenerationResult(
-                        audio_data=audio_data,
-                        sample_rate=48000,
-                        seed=seed,
-                        duration_ms=params.duration * 1000,
-                    )
-            except httpx.TimeoutException as e:
-                raise GenerationTimeoutError(f"Generation timed out after {self.timeout}s") from e
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 503:
-                    last_error = e
-                    continue
-                raise GenerationError(
-                    f"ACE-Step API error: {e.response.status_code} {e.response.text}"
-                ) from e
-            except httpx.RequestError as e:
-                last_error = GenerationError(f"Connection error: {e}")
-                last_error.__cause__ = e
-                continue
-
-        raise last_error or GenerationError("Generation failed after retries")
-
-    def _extract_audio(self, data: dict) -> bytes:
-        """Extract audio bytes from chat completions response.
-
-        ACE-Step response format:
-          choices[0].message.audio[0].audio_url.url = "data:audio/mpeg;base64,..."
-        """
-        try:
-            choices = data.get("choices", [])
-            if not choices:
-                raise GenerationError("No choices in response")
-
-            message = choices[0].get("message", {})
-
-            # Primary: message.audio[] array with audio_url entries
-            audio_list = message.get("audio")
-            if audio_list and isinstance(audio_list, list):
-                for entry in audio_list:
-                    if not isinstance(entry, dict):
-                        continue
-                    # entry = {type: "audio_url", audio_url: {url: "data:audio/mpeg;base64,..."}}
-                    audio_url_obj = entry.get("audio_url", {})
-                    url = audio_url_obj.get("url", "") if isinstance(audio_url_obj, dict) else ""
-                    if url.startswith("data:"):
-                        # data URI: data:audio/mpeg;base64,<b64data>
-                        _, _, b64 = url.partition(",")
-                        if b64:
-                            return base64.b64decode(b64)
-                    elif url.startswith("http"):
-                        return self._download_audio(url)
-
-            # Fallback: content as JSON with audio_base64 or audio_url
-            content = message.get("content", "")
-            try:
-                content_data = json.loads(content) if isinstance(content, str) else content
-                if isinstance(content_data, dict):
-                    if "audio_base64" in content_data:
-                        return base64.b64decode(content_data["audio_base64"])
-                    if "audio_url" in content_data:
-                        return self._download_audio(content_data["audio_url"])
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-            # Fallback: top-level audio field
-            if "audio" in data:
-                audio = data["audio"]
-                if isinstance(audio, str):
-                    return base64.b64decode(audio)
-                if isinstance(audio, dict) and "data" in audio:
-                    return base64.b64decode(audio["data"])
-
-            raise GenerationError(
-                f"Could not extract audio from response. "
-                f"Keys: {list(data.keys())}, "
-                f"message keys: {list(message.keys())}"
-            )
-
-        except GenerationError:
-            raise
-        except Exception as e:
-            raise GenerationError(f"Failed to parse generation response: {e}") from e
-
-    def _download_audio(self, url: str) -> bytes:
-        """Download audio from a URL."""
-        import httpx as _httpx
-        with _httpx.Client(timeout=30) as client:
-            resp = client.get(url)
-            resp.raise_for_status()
-            return resp.content
