@@ -33,6 +33,7 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new Error(`API error: ${response.status} ${response.statusText}`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -85,7 +86,7 @@ export async function addTrackToPlaylist(
     `${BASE_URL}/playlists/${playlistId}/tracks`,
     {
       method: "POST",
-      body: JSON.stringify({ track_id: trackId }),
+      body: JSON.stringify({ track_ids: [trackId] }),
     },
   );
 }

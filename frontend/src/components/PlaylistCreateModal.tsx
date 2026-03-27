@@ -9,8 +9,8 @@ interface Props {
   onClose: () => void;
 }
 
-const NAME_MAX = 50;
-const DESC_MAX = 200;
+const NAME_MAX = 100;
+const DESC_MAX = 500;
 
 export function PlaylistCreateModal({ playlist, onSave, onClose }: Props) {
   const [name, setName] = useState(playlist?.name ?? "");

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added (Issue #28 — プレイリスト機能)
+- `alembic/versions/009_add_playlists.py`: playlists・playlist_tracks テーブル追加マイグレーション（DR-001: user_id → session_id）
+- `worker/models.py`: Playlist、PlaylistTrack SQLAlchemy モデル追加（DR-001: session_id、DR-009: updated_at onupdate）
+- `api/schemas.py`: プレイリスト関連 Pydantic スキーマ追加（PlaylistCreateBody, PlaylistResponse, PlaylistDetailResponse, PlaylistListResponse, AddTrackBody[bulk], FavoritesResponse 他）
+- `api/routers/playlists.py`: プレイリスト API ルーター新規作成
+  - `POST /api/playlists` — プレイリスト作成（重複名・上限チェック付き）
+  - `GET /api/playlists` — プレイリスト一覧取得
+  - `GET /api/playlists/{playlist_id}` — プレイリスト詳細（quality_score・channel_id含む）
+  - `PATCH /api/playlists/{playlist_id}` — プレイリスト名・説明更新
+  - `DELETE /api/playlists/{playlist_id}` — プレイリスト削除（204 No Content）
+  - `POST /api/playlists/{playlist_id}/tracks` — トラック一括追加（track_ids配列、重複・上限チェック付き）
+  - `DELETE /api/playlists/{playlist_id}/tracks/{track_id}` — トラック削除（204 No Content、position 自動詰め）
+  - `PUT /api/playlists/{playlist_id}/tracks/reorder` — トラック順序一括更新
+  - `GET /api/favorites` — お気に入り（like）トラック一覧取得
+- `api/main.py`: playlists ルーターを登録
+
 ### Added (Issue #20 — リクエスト UI + チャンネル追加)
 - `alembic/versions/008_add_channels.py`: 新チャンネル3つ追加
   - `classical`（クラシック）— ピアノ・オーケストラ、BPM 60-120
