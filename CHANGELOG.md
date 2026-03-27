@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added (Issue #28 — プレイリスト機能)
+- プレイリスト CRUD + トラック追加/削除/並べ替え + お気に入り連携
+- 9 API エンドポイント、6 新規 FE コンポーネント、@dnd-kit ドラッグ&ドロップ
+- QMOフルサイクル開発（全10ロール配置）
+
+
 ### Added (Issue #20 — リクエスト UI + チャンネル追加)
 - `alembic/versions/008_add_channels.py`: 新チャンネル3つ追加
   - `classical`（クラシック）— ピアノ・オーケストラ、BPM 60-120

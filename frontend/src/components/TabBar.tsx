@@ -1,14 +1,17 @@
-import { Radio, ListMusic, Heart } from "lucide-react";
+import { Radio, ListMusic, Heart, ListVideo } from "lucide-react";
+
+type Tab = "radio" | "tracks" | "likes" | "playlist";
 
 interface Props {
-  activeTab: "radio" | "tracks" | "likes";
-  onChange: (tab: "radio" | "tracks" | "likes") => void;
+  activeTab: Tab;
+  onChange: (tab: Tab) => void;
 }
 
 const tabs = [
   { id: "radio" as const, label: "RADIO", Icon: Radio },
   { id: "tracks" as const, label: "TRACKS", Icon: ListMusic },
   { id: "likes" as const, label: "LIKES", Icon: Heart },
+  { id: "playlist" as const, label: "PLAYLISTS", Icon: ListVideo },
 ];
 
 export function TabBar({ activeTab, onChange }: Props) {

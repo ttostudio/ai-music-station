@@ -10,6 +10,7 @@ from api.routers import (
     generate,
     health,
     internal,
+    playlists,
     podcasts,
     quality,
     reactions,
@@ -35,6 +36,7 @@ app.include_router(requests.router)
 app.include_router(generate.router)
 app.include_router(tracks.router)
 app.include_router(reactions.router)
+app.include_router(playlists.router)
 app.include_router(podcasts.router)
 app.include_router(shares.router)
 app.include_router(analytics.router)

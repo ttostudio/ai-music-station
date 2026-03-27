@@ -302,5 +302,115 @@ class GenerateRequestBody(BaseModel):
     music_key: str | None = Field(None, max_length=10)
 
 
+# --- Playlist ---
+
+class PlaylistCreateBody(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+
+
+class PlaylistUpdateBody(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+
+
+class PlaylistSummaryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+    track_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlaylistResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+    track_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlaylistTrackInfo(BaseModel):
+    id: uuid.UUID
+    title: str | None = None
+    mood: str | None = None
+    caption: str
+    duration_ms: int | None = None
+    bpm: int | None = None
+    music_key: str | None = None
+    play_count: int = 0
+    like_count: int = 0
+    quality_score: float | None = None
+    channel_id: uuid.UUID
+    created_at: datetime
+
+
+class PlaylistTrackEntry(BaseModel):
+    position: int
+    added_at: datetime
+    track: PlaylistTrackInfo
+
+
+class PlaylistDetailResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+    track_count: int
+    created_at: datetime
+    updated_at: datetime
+    tracks: list[PlaylistTrackEntry]
+
+
+class PlaylistListResponse(BaseModel):
+    playlists: list[PlaylistSummaryResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class AddTrackBody(BaseModel):
+    track_ids: list[uuid.UUID] = Field(..., min_length=1)
+
+
+class AddTrackResult(BaseModel):
+    track_id: uuid.UUID
+    position: int
+    added_at: datetime
+
+
+class AddTracksResponse(BaseModel):
+    playlist_id: uuid.UUID
+    added: list[AddTrackResult]
+
+
+class ReorderTracksBody(BaseModel):
+    track_ids: list[uuid.UUID]
+
+
+class ReorderTracksResponse(BaseModel):
+    ok: bool
+
+
+class FavoriteTrackInfo(BaseModel):
+    id: uuid.UUID
+    title: str | None = None
+    mood: str | None = None
+    duration_ms: int | None = None
+    bpm: int | None = None
+    like_count: int = 0
+    quality_score: float | None = None
+    channel_id: uuid.UUID
+    liked_at: datetime
+
+
+class FavoritesResponse(BaseModel):
+    tracks: list[FavoriteTrackInfo]
+    total: int
+    limit: int
+    offset: int
+
+
 # Forward ref update
 RequestDetailResponse.model_rebuild()

@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -284,6 +285,70 @@ class TrackAnalytics(Base):
     __table_args__ = (
         Index("idx_track_analytics_track_created", "track_id", "created_at"),
         Index("idx_track_analytics_event_created", "event_type", "created_at"),
+    )
+
+
+class Playlist(Base):
+    __tablename__ = "playlists"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    session_id: Mapped[Optional[str]] = mapped_column(String(100))
+    is_public: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    playlist_tracks: Mapped[List["PlaylistTrack"]] = relationship(
+        back_populates="playlist",
+        order_by="PlaylistTrack.position",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("idx_playlists_session_created", "session_id", "created_at"),
+        Index("idx_playlists_public_created", "is_public", "created_at"),
+    )
+
+
+class PlaylistTrack(Base):
+    __tablename__ = "playlist_tracks"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    playlist_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("playlists.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tracks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    playlist: Mapped["Playlist"] = relationship(back_populates="playlist_tracks")
+    track: Mapped["Track"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint(
+            "playlist_id", "track_id", name="uq_playlist_tracks_playlist_track"
+        ),
+        Index("idx_playlist_tracks_playlist_pos", "playlist_id", "position"),
+        Index("idx_playlist_tracks_track", "track_id"),
     )
 
 

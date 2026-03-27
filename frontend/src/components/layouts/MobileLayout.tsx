@@ -6,8 +6,14 @@ import { KaraokeScreen } from "../KaraokeScreen";
 import { ChannelManager } from "../ChannelManager";
 import { TrackHistory } from "../TrackHistory";
 import { RequestForm } from "../RequestForm";
+import { PlaylistList } from "../PlaylistList";
+import { PlaylistDetail } from "../PlaylistDetail";
 import { getChannelGradient, getChannelThemeKey } from "../../utils/lrc-parser";
+import { getTracks } from "../../api/client";
 import { Settings, Music, Heart } from "lucide-react";
+
+type Tab = "radio" | "tracks" | "likes" | "playlist";
+type Screen = "home" | "nowplaying" | "karaoke" | "manager" | "playlist-detail";
 
 interface Props {
   channels: Channel[];
@@ -18,10 +24,12 @@ interface Props {
   elapsedMs: number;
   durationMs: number;
   audioRef: React.RefObject<HTMLAudioElement | null>;
-  activeTab: "radio" | "tracks" | "likes";
-  currentScreen: "home" | "nowplaying" | "karaoke" | "manager";
-  onTabChange: (tab: "radio" | "tracks" | "likes") => void;
-  onScreenChange: (screen: "home" | "nowplaying" | "karaoke" | "manager") => void;
+  activeTab: Tab;
+  currentScreen: Screen;
+  selectedPlaylistId: string | null;
+  onTabChange: (tab: Tab) => void;
+  onScreenChange: (screen: Screen) => void;
+  onOpenPlaylist: (id: string) => void;
   onSelectChannel: (slug: string) => void;
   onTogglePlay: () => void;
   onSkipPrev: () => void;
@@ -39,6 +47,13 @@ function getChannelIcon(slug: string): string {
   return "\uD83C\uDFB5";
 }
 
+async function fetchAllTracks(channels: Channel[]): Promise<Track[]> {
+  const results = await Promise.all(
+    channels.map((ch) => getTracks(ch.slug, 50).then((r) => r.tracks)),
+  );
+  return results.flat();
+}
+
 export function MobileLayout({
   channels,
   activeSlug,
@@ -50,8 +65,10 @@ export function MobileLayout({
   audioRef,
   activeTab,
   currentScreen,
+  selectedPlaylistId,
   onTabChange,
   onScreenChange,
+  onOpenPlaylist,
   onSelectChannel,
   onTogglePlay,
   onSkipPrev,
@@ -105,6 +122,22 @@ export function MobileLayout({
     return (
       <div className="mobile-layout">
         <ChannelManager onClose={() => onScreenChange("home")} />
+      </div>
+    );
+  }
+
+  if (currentScreen === "playlist-detail" && selectedPlaylistId) {
+    return (
+      <div className="mobile-layout">
+        <PlaylistDetail
+          playlistId={selectedPlaylistId}
+          onBack={() => onScreenChange("home")}
+          onDeleted={() => {
+            onScreenChange("home");
+            onTabChange("playlist");
+          }}
+          fetchAllTracks={() => fetchAllTracks(channels)}
+        />
       </div>
     );
   }
@@ -181,6 +214,10 @@ export function MobileLayout({
               <div className="mobile-empty-state">チャンネルを選択してください</div>
             )}
           </div>
+        )}
+
+        {activeTab === "playlist" && (
+          <PlaylistList onOpenDetail={onOpenPlaylist} />
         )}
       </div>
 

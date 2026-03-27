@@ -154,6 +154,73 @@ export interface GenerateRequestBody {
   music_key?: string;
 }
 
+// --- Playlist types ---
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description: string | null;
+  track_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlaylistTrackEntry {
+  position: number;
+  added_at: string;
+  track: Track & { channel_id?: string };
+}
+
+export interface PlaylistDetail extends Playlist {
+  tracks: PlaylistTrackEntry[];
+}
+
+export interface PlaylistListResponse {
+  playlists: Playlist[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PlaylistCreateBody {
+  name: string;
+  description?: string;
+}
+
+export interface PlaylistUpdateBody {
+  name?: string;
+  description?: string;
+}
+
+export interface PlaylistDeleteResponse {
+  ok: boolean;
+  deleted_tracks: number;
+}
+
+export interface PlaylistAddTrackResponse {
+  playlist_id: string;
+  track_id: string;
+  position: number;
+  added_at: string;
+}
+
+export interface PlaylistReorderBody {
+  track_ids: string[];
+}
+
+export interface FavoriteTrack extends Track {
+  channel_id: string;
+  liked_at: string;
+}
+
+export interface FavoritesResponse {
+  tracks: FavoriteTrack[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+
 export interface RequestDetailResponse {
   id: string;
   channel_slug: string;
