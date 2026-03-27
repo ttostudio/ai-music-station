@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Player } from "./components/Player";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
@@ -134,7 +134,7 @@ export default function App() {
   }, []);
 
   // Sync volume to both audio elements
-  useCallback(() => {
+  useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
     if (trackAudioRef.current) trackAudioRef.current.volume = volume;
   }, [volume]);
