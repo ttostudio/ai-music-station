@@ -220,7 +220,6 @@ export interface FavoritesResponse {
   offset: number;
 }
 
-// --- End Playlist types ---
 
 export interface RequestDetailResponse {
   id: string;

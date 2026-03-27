@@ -73,10 +73,10 @@ describe("PlaylistCreateModal", () => {
     const { getByText, getByPlaceholderText } = render(
       <PlaylistCreateModal onSave={vi.fn()} onClose={vi.fn()} />,
     );
-    expect(getByText("0/50")).toBeInTheDocument();
+    expect(getByText("0/100")).toBeInTheDocument();
     const input = getByPlaceholderText("プレイリスト名");
     fireEvent.change(input, { target: { value: "abc" } });
-    expect(getByText("3/50")).toBeInTheDocument();
+    expect(getByText("3/100")).toBeInTheDocument();
   });
 
   it("UT-CM-08: 保存成功後に onClose が呼ばれる", async () => {
