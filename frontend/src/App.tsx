@@ -19,8 +19,9 @@ export default function App() {
   const nowPlaying = useNowPlaying(activeSlug);
 
   // New state for redesign
-  const [activeTab, setActiveTab] = useState<"radio" | "tracks" | "likes">("radio");
-  const [currentScreen, setCurrentScreen] = useState<"home" | "nowplaying" | "karaoke" | "manager">("home");
+  const [activeTab, setActiveTab] = useState<"radio" | "tracks" | "likes" | "playlist">("radio");
+  const [currentScreen, setCurrentScreen] = useState<"home" | "nowplaying" | "karaoke" | "manager" | "playlist-detail">("home");
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [showLyricsPanel, setShowLyricsPanel] = useState(false);
   const [showChannelMenu, setShowChannelMenu] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -160,8 +161,13 @@ export default function App() {
           audioRef={audioRef}
           activeTab={activeTab}
           currentScreen={currentScreen}
+          selectedPlaylistId={selectedPlaylistId}
           onTabChange={setActiveTab}
           onScreenChange={setCurrentScreen}
+          onOpenPlaylist={(id) => {
+            setSelectedPlaylistId(id);
+            setCurrentScreen("playlist-detail");
+          }}
           onSelectChannel={handleSelectChannelBySlug}
           onTogglePlay={togglePlay}
           onSkipPrev={handleSkipPrev}
