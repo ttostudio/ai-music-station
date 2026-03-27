@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added (Phase 2 — フロントエンド: Player デュアルモード・プレイリスト再生・グローバル検索・リクエストキュー)
+- `hooks/usePlaylistPlayer.ts`: トラック再生フック (Fisher-Yates シャッフル、リピート、prev/next)
+- `components/SearchBar.tsx`: グローバル検索バー (300ms デバウンス、デスクトップ/タブレット/モバイル対応)
+- `components/RequestQueueTab.tsx`: 全チャンネル横断リクエストキュータブ (5秒ポーリング、ステータスバッジ)
+- `components/FloatingBar.tsx`: モード切替 (Radio ↔ ListMusic)、トラックモード専用コントロール (prev/next/shuffle/repeat/seek)
+- `components/MiniPlayer.tsx`: トラックモード対応 (曲名・前/次ボタン・プログレスバー)
+- `components/PlaylistTrackItem.tsx`: 再生ボタン追加、再生中トラックのアクティブハイライト
+- `components/PlaylistDetail.tsx`: 「全曲再生」「シャッフル」ボタン、トラック行の再生ボタン、onPlayPlaylist/onPlayTrack コールバック
+- `components/TabBar.tsx`: QUEUE タブ追加 (5タブ構成)、バッジ表示
+- `components/layouts/MobileLayout.tsx`: QUEUEタブ・SearchBar (モバイル展開型)・PlaylistPlayer 連携
+- `components/layouts/DesktopLayout.tsx`: SearchBar (右上固定)・PlaylistPlayer 連携
+- `components/layouts/TabletLayout.tsx`: SearchBar・PlaylistPlayer 連携
+- `App.tsx`: trackAudioRef + usePlaylistPlayer 統合、ストリーム/トラックモード相互停止制御
+- `api/types.ts`: PlayMode, RepeatMode, TrackSearchListResponse, AllRequestsListResponse 型追加
+- `api/client.ts`: searchTracks(), getTrackAudioUrl(), getAllRequests() 追加
+- `styles.css`: Phase 2 デザイントークン (status colors, track-active highlight) + 新コンポーネントスタイル
+
 ### Added (Issue #28 — プレイリスト機能)
 - プレイリスト CRUD + トラック追加/削除/並べ替え + お気に入り連携
 - 9 API エンドポイント、6 新規 FE コンポーネント、@dnd-kit ドラッグ&ドロップ

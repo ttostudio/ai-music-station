@@ -1,5 +1,5 @@
 import type { Channel, Track } from "../../api/types";
-import { TabBar } from "../TabBar";
+import { TabBar, type Tab } from "../TabBar";
 import { MiniPlayer } from "../MiniPlayer";
 import { NowPlayingScreen } from "../NowPlayingScreen";
 import { KaraokeScreen } from "../KaraokeScreen";
@@ -8,11 +8,13 @@ import { TrackHistory } from "../TrackHistory";
 import { RequestForm } from "../RequestForm";
 import { PlaylistList } from "../PlaylistList";
 import { PlaylistDetail } from "../PlaylistDetail";
+import { RequestQueueTab } from "../RequestQueueTab";
+import { SearchBar } from "../SearchBar";
 import { getChannelGradient, getChannelThemeKey } from "../../utils/lrc-parser";
 import { getTracks } from "../../api/client";
 import { Settings, Music, Heart } from "lucide-react";
+import type { PlaylistPlayerResult } from "../../hooks/usePlaylistPlayer";
 
-type Tab = "radio" | "tracks" | "likes" | "playlist";
 type Screen = "home" | "nowplaying" | "karaoke" | "manager" | "playlist-detail";
 
 interface Props {
@@ -36,6 +38,7 @@ interface Props {
   onSkipNext: () => void;
   onLike: () => void;
   liked?: boolean;
+  playlistPlayer: PlaylistPlayerResult;
 }
 
 function getChannelIcon(slug: string): string {
@@ -75,9 +78,21 @@ export function MobileLayout({
   onSkipNext,
   onLike,
   liked,
+  playlistPlayer,
 }: Props) {
   const channelName = activeChannel?.name ?? "";
   const visibleChannels = channels.filter((c) => c.is_active);
+  const isTrackMode = playlistPlayer.playMode === "track";
+
+  const handleToggleTrackPlay = () => {
+    const audio = document.querySelector<HTMLAudioElement>("audio#track-audio");
+    if (!audio) return;
+    if (playlistPlayer.isTrackPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+  };
 
   // Sub-screens overlay on top
   if (currentScreen === "nowplaying") {
@@ -137,6 +152,9 @@ export function MobileLayout({
             onTabChange("playlist");
           }}
           fetchAllTracks={() => fetchAllTracks(channels)}
+          onPlayPlaylist={playlistPlayer.playPlaylist}
+          onPlayTrack={playlistPlayer.playTrack}
+          currentTrackId={isTrackMode ? playlistPlayer.currentTrack?.id : undefined}
         />
       </div>
     );
@@ -150,8 +168,16 @@ export function MobileLayout({
           <div className="mobile-radio-tab">
             {/* Header */}
             <header className="mobile-header">
-              <h1 className="mobile-title">AI Music Station</h1>
-              <p className="mobile-subtitle">AIが生成した音楽をライブ配信</p>
+              <div className="mobile-header-row">
+                <div>
+                  <h1 className="mobile-title">AI Music Station</h1>
+                  <p className="mobile-subtitle">AIが生成した音楽をライブ配信</p>
+                </div>
+                <SearchBar
+                  mobile
+                  onPlayTrack={(t) => playlistPlayer.playTrack(t)}
+                />
+              </div>
               <button className="mobile-manage-btn" onClick={() => onScreenChange("manager")}>
                 <Settings size={14} />
                 <span>チャンネル管理</span>
@@ -219,16 +245,28 @@ export function MobileLayout({
         {activeTab === "playlist" && (
           <PlaylistList onOpenDetail={onOpenPlaylist} />
         )}
+
+        {activeTab === "queue" && (
+          <RequestQueueTab />
+        )}
       </div>
 
       {/* Mini player */}
-      {activeSlug && (
+      {(activeSlug || isTrackMode) && (
         <MiniPlayer
           track={track}
           channelName={channelName}
           isPlaying={isPlaying}
           onPlayPause={onTogglePlay}
           onOpenNowPlaying={() => onScreenChange("nowplaying")}
+          playMode={playlistPlayer.playMode}
+          currentTrack={playlistPlayer.currentTrack}
+          isTrackPlaying={playlistPlayer.isTrackPlaying}
+          trackElapsedMs={playlistPlayer.trackElapsedMs}
+          trackDurationMs={playlistPlayer.trackDurationMs}
+          onNextTrack={playlistPlayer.nextTrack}
+          onPrevTrack={playlistPlayer.prevTrack}
+          onToggleTrackPlay={handleToggleTrackPlay}
         />
       )}
 
