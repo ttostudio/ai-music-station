@@ -101,6 +101,29 @@ class TrackListResponse(BaseModel):
     total: int
 
 
+class TrackSearchResponse(BaseModel):
+    id: uuid.UUID
+    title: str | None = None
+    caption: str
+    mood: str | None = None
+    duration_ms: int | None = None
+    bpm: int | None = None
+    music_key: str | None = None
+    instrumental: bool | None = None
+    play_count: int = 0
+    like_count: int = 0
+    quality_score: float | None = None
+    channel_slug: str
+    created_at: datetime
+
+
+class TrackSearchListResponse(BaseModel):
+    tracks: list[TrackSearchResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class NowPlayingResponse(BaseModel):
     track: TrackResponse | None = None
 
