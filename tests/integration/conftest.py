@@ -38,14 +38,20 @@ def _run_sql(sql: str) -> str:
 
 @pytest.fixture(scope="function")
 def test_client() -> Generator:
-    """実 DB（test_music_station）に接続した TestClient"""
+    """実 DB（test_music_station）に接続した TestClient。
+    バックグラウンドワーカーはテスト中は無効化する（ポート5432への接続を避けるため）。
+    """
+    from unittest.mock import AsyncMock, patch
+
     async def override_session():
         async with TestSessionFactory() as s:
             yield s
 
     app.dependency_overrides[get_session] = override_session
-    with TestClient(app) as client:
-        yield client
+    with patch("api.main.start_worker", new=AsyncMock()):
+        with patch("api.main.stop_worker", new=AsyncMock()):
+            with TestClient(app) as client:
+                yield client
     app.dependency_overrides.clear()
 
 
