@@ -10,10 +10,9 @@ vi.mock("../api/playlists", () => ({
   createPlaylist: vi.fn(),
 }));
 
-import { getPlaylists, createPlaylist } from "../api/playlists";
+import { getPlaylists } from "../api/playlists";
 
 const mockGetPlaylists = vi.mocked(getPlaylists);
-const mockCreatePlaylist = vi.mocked(createPlaylist);
 
 const samplePlaylist: Playlist = {
   id: "uuid-1",
