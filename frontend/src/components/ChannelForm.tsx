@@ -92,8 +92,8 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="text-lg font-bold text-white">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto px-1">
+      <h3 className="text-lg font-bold text-white sticky top-0 bg-[var(--color-bg-base)] py-2 z-10">
         {isEdit ? "チャンネル編集" : "新規チャンネル作成"}
       </h3>
 
@@ -103,8 +103,8 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block col-span-2 sm:col-span-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>スラッグ</span>
           <input
             type="text"
@@ -116,7 +116,7 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
           />
         </label>
 
-        <label className="block col-span-2 sm:col-span-1">
+        <label className="block">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>チャンネル名</span>
           <input
             type="text"
@@ -150,7 +150,7 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         />
       </label>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <label className="block">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>BPM最小</span>
           <input
@@ -186,7 +186,7 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>デフォルトキー</span>
           <input
@@ -221,7 +221,7 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         />
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>最小ストック</span>
           <input
@@ -267,7 +267,7 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         </label>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2 sticky bottom-0 bg-[var(--color-bg-base)] py-3">
         <button
           type="button"
           onClick={onCancel}
