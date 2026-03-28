@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -12,11 +13,12 @@ from worker.acestep_client import (
     GenerationTimeoutError,
     _build_prompt,
 )
+from api.services.acestep_client import AceStepError, AceStepTimeoutError
 
 
 @pytest.fixture
 def client():
-    return ACEStepClient(base_url="http://test:8001", timeout=10, retries=3)
+    return ACEStepClient(base_url="http://test:8001", timeout=10)
 
 
 @pytest.fixture
@@ -32,10 +34,7 @@ def default_params():
 
 
 def _make_chat_response(audio_b64: str = "ZmFrZS1hdWRpby1kYXRh") -> MagicMock:
-    """Create a mock chat completions response matching ACE-Step's actual format.
-
-    Real format: choices[0].message.audio[0].audio_url.url = "data:audio/mpeg;base64,..."
-    """
+    """Create a mock chat completions response matching ACE-Step's actual format."""
     resp = MagicMock()
     resp.status_code = 200
     resp.raise_for_status = MagicMock()
@@ -110,129 +109,88 @@ class TestGenerationParams:
 
 class TestACEStepClient:
     @pytest.mark.asyncio
-    async def test_successful_generation(self, client, default_params):
+    async def test_successful_generation(self, client, tmp_path):
+        """generate_sync が成功した場合にファイルを書き込み result を返す"""
         mock_response = _make_chat_response()
+        params = {"prompt": "test lo-fi beat", "audio_duration": 60}
+        dest = tmp_path / "output.mp3"
 
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post = AsyncMock(return_value=mock_response)
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
+        mock_http = AsyncMock()
+        mock_http.post = AsyncMock(return_value=mock_response)
+        client._client = mock_http
 
-            result = await client.generate(default_params)
+        result = await client.generate_sync(params, dest)
 
-            assert result.audio_data == b"fake-audio-data"
-            assert result.sample_rate == 48000
-            assert result.seed == 42
-            assert result.duration_ms == 60000
-
-            mock_http.post.assert_called_once()
-            call_kwargs = mock_http.post.call_args
-            assert "/v1/chat/completions" in call_kwargs.args[0]
-            payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
-            assert payload["model"] == "ace-step-v1.5"
-            assert len(payload["messages"]) == 1
-            assert "test lo-fi beat" in payload["messages"][0]["content"]
+        assert dest.exists()
+        assert dest.read_bytes() == b"fake-audio-data"
+        assert result.status == "completed"
+        assert result.audio_path == str(dest)
+        mock_http.post.assert_called_once()
+        call_args = mock_http.post.call_args
+        assert "/v1/chat/completions" in call_args.args[0]
+        payload = call_args.kwargs.get("json") or call_args[1]["json"]
+        assert payload["model"] in ("ace-step-v1.5-turbo", "ace-step-v1.5")
+        assert "test lo-fi beat" in payload["messages"][0]["content"]
 
     @pytest.mark.asyncio
-    async def test_timeout_raises_error(self, client, default_params):
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
+    async def test_timeout_raises_error(self, client, tmp_path):
+        """タイムアウト時に AceStepTimeoutError が送出される"""
+        params = {"prompt": "test", "audio_duration": 10}
+        dest = tmp_path / "output.mp3"
 
-            with pytest.raises(GenerationTimeoutError):
-                await client.generate(default_params)
+        mock_http = AsyncMock()
+        mock_http.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        client._client = mock_http
 
-    @pytest.mark.asyncio
-    async def test_retry_on_503(self, client, default_params):
-        mock_response_503 = MagicMock()
-        mock_response_503.status_code = 503
-        mock_response_503.text = "Service Unavailable"
-
-        mock_response_200 = _make_chat_response()
-
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post = AsyncMock(side_effect=[mock_response_503, mock_response_200])
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
-
-            result = await client.generate(default_params)
-            assert result.audio_data == b"fake-audio-data"
-            assert mock_http.post.call_count == 2
+        with pytest.raises(AceStepTimeoutError):
+            await client.generate_sync(params, dest)
 
     @pytest.mark.asyncio
-    async def test_exhausted_retries_raises(self, client, default_params):
-        mock_response_503 = MagicMock()
-        mock_response_503.status_code = 503
-        mock_response_503.text = "Service Unavailable"
+    async def test_connect_error_raises_generation_error(self, client, tmp_path):
+        """接続失敗時に AceStepError が送出される"""
+        params = {"prompt": "test", "audio_duration": 10}
+        dest = tmp_path / "output.mp3"
 
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post = AsyncMock(return_value=mock_response_503)
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
+        mock_http = AsyncMock()
+        mock_http.post = AsyncMock(side_effect=httpx.ConnectError("refused"))
+        client._client = mock_http
 
-            with pytest.raises(GenerationError):
-                await client.generate(default_params)
-            assert mock_http.post.call_count == 3
+        with pytest.raises(AceStepError):
+            await client.generate_sync(params, dest)
 
     @pytest.mark.asyncio
-    async def test_random_seed_when_none(self, client):
-        params = GenerationParams(caption="test", seed=None)
-        mock_response = _make_chat_response()
+    async def test_queue_full_raises_error(self, client, tmp_path):
+        """HTTP 429 で AceStepQueueFullError が送出される"""
+        from api.services.acestep_client import AceStepQueueFullError
 
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_http = AsyncMock()
-            mock_http.post = AsyncMock(return_value=mock_response)
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        mock_response.raise_for_status = MagicMock()
 
-            result = await client.generate(params)
-            assert isinstance(result.seed, int)
+        params = {"prompt": "test", "audio_duration": 10}
+        dest = tmp_path / "output.mp3"
+
+        mock_http = AsyncMock()
+        mock_http.post = AsyncMock(return_value=mock_response)
+        client._client = mock_http
+
+        with pytest.raises(AceStepQueueFullError):
+            await client.generate_sync(params, dest)
 
     @pytest.mark.asyncio
-    async def test_audio_url_download(self, client, default_params):
-        """Test extraction when response contains http URL instead of data URI."""
+    async def test_empty_choices_raises_error(self, client, tmp_path):
+        """choices が空の場合に AceStepError が送出される"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.raise_for_status = MagicMock()
-        mock_response.json = MagicMock(return_value={
-            "choices": [{
-                "message": {
-                    "role": "assistant",
-                    "content": "test",
-                    "audio": [{
-                        "type": "audio_url",
-                        "audio_url": {"url": "http://test/audio.flac"},
-                    }],
-                },
-            }],
-        })
+        mock_response.json = MagicMock(return_value={"choices": []})
 
-        with patch("httpx.AsyncClient") as mock_cls, \
-             patch("httpx.Client") as mock_sync_cls:
-            mock_http = AsyncMock()
-            mock_http.post = AsyncMock(return_value=mock_response)
-            mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-            mock_http.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_http
+        params = {"prompt": "test", "audio_duration": 10}
+        dest = tmp_path / "output.mp3"
 
-            mock_sync = MagicMock()
-            mock_dl_resp = MagicMock()
-            mock_dl_resp.content = b"downloaded-audio"
-            mock_dl_resp.raise_for_status = MagicMock()
-            mock_sync.get = MagicMock(return_value=mock_dl_resp)
-            mock_sync.__enter__ = MagicMock(return_value=mock_sync)
-            mock_sync.__exit__ = MagicMock(return_value=False)
-            mock_sync_cls.return_value = mock_sync
+        mock_http = AsyncMock()
+        mock_http.post = AsyncMock(return_value=mock_response)
+        client._client = mock_http
 
-            result = await client.generate(default_params)
-            assert result.audio_data == b"downloaded-audio"
+        with pytest.raises(AceStepError):
+            await client.generate_sync(params, dest)

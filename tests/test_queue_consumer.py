@@ -15,15 +15,23 @@ def mock_session_factory():
 
 @pytest.fixture
 def mock_client():
+    from api.services.acestep_client import AceStepJobResult
+    from pathlib import Path
+
     client = AsyncMock()
-    client.generate = AsyncMock(
-        return_value=GenerationResult(
-            audio_data=b"fake-flac-data",
-            sample_rate=48000,
-            seed=42,
-            duration_ms=180000,
+
+    async def _mock_generate_sync(params: dict, dest_path: Path) -> AceStepJobResult:
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        dest_path.write_bytes(b"fake-mp3-data")
+        return AceStepJobResult(
+            status="completed",
+            audio_path=str(dest_path),
+            duration=180.0,
+            bpm=80,
+            key_scale="Am",
         )
-    )
+
+    client.generate_sync = _mock_generate_sync
     return client
 
 
@@ -84,11 +92,10 @@ class TestProcessRequest:
         assert track.channel_id == sample_channel.id
         assert track.request_id == sample_request.id
         assert track.file_path.startswith("lofi/")
-        assert track.file_path.endswith(".flac")
+        assert track.file_path.endswith(".mp3")
         assert track.caption is not None
-        assert track.seed == 42
+        assert track.seed is None
         assert track.duration_ms == 180000
-        mock_client.generate.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_saves_file_to_disk(
@@ -104,7 +111,7 @@ class TestProcessRequest:
 
         full_path = tmp_path / "tracks" / track.file_path
         assert full_path.exists()
-        assert full_path.read_bytes() == b"fake-flac-data"
+        assert full_path.read_bytes() == b"fake-mp3-data"
 
     @pytest.mark.asyncio
     async def test_raises_on_missing_channel(self, consumer, sample_request):
