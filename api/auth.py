@@ -13,9 +13,13 @@ def verify_internal_api_key(authorization: str | None = Header(default=None)) ->
     """
     secret_key = os.environ.get("INTERNAL_API_KEY")
 
-    # INTERNAL_API_KEY未設定時は認証をスキップ（既存動作維持）
+    # INTERNAL_API_KEY未設定時は全リクエストを拒否（セキュアデフォルト）
     if not secret_key:
-        return
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="INTERNAL_API_KEY is not configured",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if authorization is None:
         raise HTTPException(

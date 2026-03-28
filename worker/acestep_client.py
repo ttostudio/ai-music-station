@@ -25,6 +25,20 @@ from api.services.acestep_client import (  # noqa: F401
 ACEStepClient = AceStepClient
 
 
+def _build_prompt(params: "GenerationParams") -> str:
+    """GenerationParams からプロンプト文字列を構築する（後方互換ヘルパー）。"""
+    parts = [params.caption]
+    if params.instrumental and not params.lyrics:
+        parts.append("Instrumental")
+    if params.bpm:
+        parts.append(f"BPM: {params.bpm}")
+    if params.key:
+        parts.append(f"Key: {params.key}")
+    if params.lyrics:
+        parts.append(f"Lyrics: {params.lyrics}")
+    return " ".join(parts)
+
+
 @dataclass
 class GenerationParams:
     """Worker → ACE-Step パラメータ転送用 DTO。"""

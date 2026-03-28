@@ -50,6 +50,8 @@ services:
     environment:
       DATABASE_URL: "postgresql+asyncpg://${DB_USER:-app}:${DB_PASSWORD}@postgres:5432/ai_music_station"
       ACESTEP_API_URL: "${ACESTEP_API_URL:-http://host.docker.internal:8001}"
+    volumes:
+      - ./generated_tracks:/tracks:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

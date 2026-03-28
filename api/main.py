@@ -17,6 +17,7 @@ from api.routers import (
     requests,
     shares,
     tracks,
+    tracks_global,
 )
 from api.services.generation_worker import start_worker, stop_worker
 
@@ -42,3 +43,4 @@ app.include_router(shares.router)
 app.include_router(analytics.router)
 app.include_router(internal.router)
 app.include_router(quality.router)
+app.include_router(tracks_global.router)
