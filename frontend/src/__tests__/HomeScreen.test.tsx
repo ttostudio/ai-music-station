@@ -6,6 +6,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { MobileLayout } from "../components/layouts/MobileLayout";
 import type { Channel, Track } from "../api/types";
+import type { PlaylistPlayerResult } from "../hooks/usePlaylistPlayer";
 import React from "react";
 
 afterEach(cleanup);
@@ -37,6 +38,27 @@ const mockChannels: Channel[] = [
 
 const audioRef = React.createRef<HTMLAudioElement | null>();
 
+const mockPlaylistPlayer: PlaylistPlayerResult = {
+  playMode: "stream",
+  trackQueue: [],
+  currentTrackIndex: 0,
+  currentTrack: null,
+  shuffle: false,
+  repeat: "off",
+  isTrackPlaying: false,
+  trackElapsedMs: 0,
+  trackDurationMs: 0,
+  playTrack: vi.fn(),
+  playPlaylist: vi.fn(),
+  nextTrack: vi.fn(),
+  prevTrack: vi.fn(),
+  toggleShuffle: vi.fn(),
+  cycleRepeat: vi.fn(),
+  switchToStream: vi.fn(),
+  switchToTrack: vi.fn(),
+  seekTo: vi.fn(),
+};
+
 const defaultProps = {
   channels: mockChannels,
   activeSlug: null,
@@ -48,13 +70,16 @@ const defaultProps = {
   audioRef,
   activeTab: "radio" as const,
   currentScreen: "home" as const,
+  selectedPlaylistId: null,
   onTabChange: vi.fn(),
   onScreenChange: vi.fn(),
+  onOpenPlaylist: vi.fn(),
   onSelectChannel: vi.fn(),
   onTogglePlay: vi.fn(),
   onSkipPrev: vi.fn(),
   onSkipNext: vi.fn(),
   onLike: vi.fn(),
+  playlistPlayer: mockPlaylistPlayer,
 };
 
 describe("HomeScreen (MobileLayout RADIO tab)", () => {

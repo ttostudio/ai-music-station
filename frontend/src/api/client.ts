@@ -1,4 +1,5 @@
 import type {
+  AllRequestsListResponse,
   ChannelCreateBody,
   ChannelDeleteResponse,
   ChannelFullResponse,
@@ -13,6 +14,7 @@ import type {
   ShareLinkResponse,
   TrackListResponse,
   TrackQualityResponse,
+  TrackSearchListResponse,
 } from "./types";
 
 const BASE_URL = "/api";
@@ -154,5 +156,28 @@ export async function getGenerateStatus(
 ): Promise<RequestDetailResponse> {
   return fetchJSON<RequestDetailResponse>(
     `${BASE_URL}/generate/${requestId}/status`,
+  );
+}
+
+// --- Phase 2 API ---
+
+export async function searchTracks(
+  q: string,
+  limit = 20,
+): Promise<TrackSearchListResponse> {
+  return fetchJSON<TrackSearchListResponse>(
+    `${BASE_URL}/tracks/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+  );
+}
+
+export function getTrackAudioUrl(trackId: string): string {
+  return `${BASE_URL}/tracks/${trackId}/audio`;
+}
+
+export async function getAllRequests(
+  limit = 50,
+): Promise<AllRequestsListResponse> {
+  return fetchJSON<AllRequestsListResponse>(
+    `${BASE_URL}/requests?limit=${limit}`,
   );
 }

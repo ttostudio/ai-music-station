@@ -1,14 +1,17 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Player } from "./components/Player";
 import { useChannels } from "./hooks/useChannels";
 import { useNowPlaying } from "./hooks/useNowPlaying";
 import { useElapsedTime } from "./hooks/useElapsedTime";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useBreakpoint } from "./hooks/useBreakpoint";
+import { usePlaylistPlayer, type PlayMode } from "./hooks/usePlaylistPlayer";
 import { resumeAudioContext } from "./components/AudioVisualizer";
 import { MobileLayout } from "./components/layouts/MobileLayout";
 import { TabletLayout } from "./components/layouts/TabletLayout";
 import { DesktopLayout } from "./components/layouts/DesktopLayout";
+import { getTrackAudioUrl } from "./api/client";
+import type { Tab } from "./components/TabBar";
 
 export default function App() {
   const { channels, loading, error } = useChannels();
@@ -19,7 +22,7 @@ export default function App() {
   const nowPlaying = useNowPlaying(activeSlug);
 
   // New state for redesign
-  const [activeTab, setActiveTab] = useState<"radio" | "tracks" | "likes" | "playlist">("radio");
+  const [activeTab, setActiveTab] = useState<Tab>("radio");
   const [currentScreen, setCurrentScreen] = useState<"home" | "nowplaying" | "karaoke" | "manager" | "playlist-detail">("home");
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [showLyricsPanel, setShowLyricsPanel] = useState(false);
@@ -31,12 +34,38 @@ export default function App() {
   const activeChannel = channels.find((c) => c.slug === activeSlug);
   const streamUrl = activeChannel ? activeChannel.stream_url : null;
 
-  // Shared audioRef — passed to Player and layouts
+  // Shared stream audioRef — passed to Player (stream audio)
   const audioRef = useRef<HTMLAudioElement>(null);
   const elapsedMs = useElapsedTime(audioRef, isPlaying);
 
+  // Track audio ref — used by usePlaylistPlayer
+  const trackAudioRef = useRef<HTMLAudioElement>(null);
+
+  // Called by playlist player when switching modes
+  const handleSwitchPlayMode = useCallback((mode: PlayMode) => {
+    if (mode === "track") {
+      // Pause stream audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    }
+    // When switching to stream, track audio is paused by switchToStream()
+  }, []);
+
+  // Playlist player hook
+  const playlistPlayer = usePlaylistPlayer(
+    trackAudioRef,
+    handleSwitchPlayMode,
+    getTrackAudioUrl,
+  );
+
   const togglePlay = useCallback(async () => {
     if (!audioRef.current || !streamUrl) return;
+    // If in track mode, switch back to stream first
+    if (playlistPlayer.playMode === "track") {
+      playlistPlayer.switchToStream();
+    }
     try {
       if (isPlaying) {
         audioRef.current.pause();
@@ -49,7 +78,7 @@ export default function App() {
     } catch {
       setIsPlaying(false);
     }
-  }, [isPlaying, streamUrl]);
+  }, [isPlaying, streamUrl, playlistPlayer]);
 
   const handleVolumeUp = useCallback(() => {
     setVolume((v) => Math.min(1, +(v + 0.05).toFixed(2)));
@@ -104,6 +133,12 @@ export default function App() {
     setLiked((v) => !v);
   }, []);
 
+  // Sync volume to both audio elements
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+    if (trackAudioRef.current) trackAudioRef.current.volume = volume;
+  }, [volume]);
+
   useKeyboardShortcuts({
     onTogglePlay: togglePlay,
     onVolumeUp: handleVolumeUp,
@@ -132,8 +167,9 @@ export default function App() {
 
   return (
     <div className="app-root">
-      {/* Hidden audio element — Player.tsx manages audio tag with crossOrigin and preload */}
+      {/* Hidden audio elements */}
       <div style={{ display: "none" }}>
+        {/* Stream audio — Player.tsx manages audio tag with crossOrigin and preload */}
         <Player
           streamUrl={streamUrl}
           channelName={activeChannel?.name ?? ""}
@@ -145,6 +181,13 @@ export default function App() {
           onVolumeChange={setVolume}
           isPlaying={isPlaying}
           onTogglePlay={togglePlay}
+        />
+        {/* Track audio — managed by usePlaylistPlayer */}
+        <audio
+          id="track-audio"
+          ref={trackAudioRef}
+          preload="auto"
+          crossOrigin="anonymous"
         />
       </div>
 
@@ -174,6 +217,7 @@ export default function App() {
           onSkipNext={handleSkipNext}
           onLike={handleLike}
           liked={liked}
+          playlistPlayer={playlistPlayer}
         />
       )}
 
@@ -195,6 +239,7 @@ export default function App() {
           onChannelMenuToggle={() => setShowChannelMenu((v) => !v)}
           onShowManager={() => setCurrentScreen("manager")}
           liked={liked}
+          playlistPlayer={playlistPlayer}
         />
       )}
 
@@ -218,6 +263,7 @@ export default function App() {
           onChannelMenuToggle={() => setShowChannelMenu((v) => !v)}
           onShowManager={() => setCurrentScreen("manager")}
           liked={liked}
+          playlistPlayer={playlistPlayer}
         />
       )}
     </div>

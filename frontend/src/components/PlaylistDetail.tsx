@@ -42,6 +42,9 @@ interface Props {
   onBack: () => void;
   onDeleted: () => void;
   fetchAllTracks: () => Promise<Track[]>;
+  onPlayPlaylist?: (tracks: Track[], startIndex?: number) => void;
+  onPlayTrack?: (track: Track, queue: Track[]) => void;
+  currentTrackId?: string | null;
 }
 
 function formatTotalDuration(
@@ -63,6 +66,9 @@ export function PlaylistDetail({
   onBack,
   onDeleted,
   fetchAllTracks,
+  onPlayPlaylist,
+  onPlayTrack,
+  currentTrackId,
 }: Props) {
   const [detail, setDetail] = useState<PlaylistDetailType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,6 +157,25 @@ export function PlaylistDetail({
     }
   }
 
+  const handlePlayAll = () => {
+    if (!detail || !onPlayPlaylist) return;
+    const tracks = detail.tracks.map((e) => e.track as Track);
+    onPlayPlaylist(tracks, 0);
+  };
+
+  const handleShufflePlay = () => {
+    if (!detail || !onPlayPlaylist) return;
+    const tracks = detail.tracks.map((e) => e.track as Track);
+    const startIndex = Math.floor(Math.random() * tracks.length);
+    onPlayPlaylist(tracks, startIndex);
+  };
+
+  const handlePlayTrack = (index: number) => {
+    if (!detail || !onPlayTrack) return;
+    const tracks = detail.tracks.map((e) => e.track as Track);
+    onPlayTrack(tracks[index], tracks);
+  };
+
   const existingTrackIds = new Set(
     detail?.tracks.map((e) => e.track.id) ?? [],
   );
@@ -222,11 +247,19 @@ export function PlaylistDetail({
 
         {/* Play buttons */}
         <div className="playlist-detail-play-row">
-          <button className="playlist-play-btn">
+          <button
+            className="playlist-play-btn"
+            onClick={handlePlayAll}
+            disabled={detail.tracks.length === 0 || !onPlayPlaylist}
+          >
             <Play size={16} fill="currentColor" />
             すべて再生
           </button>
-          <button className="playlist-shuffle-btn">
+          <button
+            className="playlist-shuffle-btn"
+            onClick={handleShufflePlay}
+            disabled={detail.tracks.length === 0 || !onPlayPlaylist}
+          >
             <Shuffle size={16} />
             シャッフル
           </button>
@@ -265,6 +298,8 @@ export function PlaylistDetail({
                     entry={entry}
                     index={index}
                     onRemove={() => handleRemoveTrack(entry.track.id)}
+                    onPlay={onPlayTrack ? () => handlePlayTrack(index) : undefined}
+                    isActive={entry.track.id === currentTrackId}
                   />
                 ))}
               </SortableContext>

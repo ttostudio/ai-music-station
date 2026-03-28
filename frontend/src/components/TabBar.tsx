@@ -1,10 +1,11 @@
-import { Radio, ListMusic, Heart, ListVideo } from "lucide-react";
+import { Radio, ListMusic, Heart, ListVideo, Inbox } from "lucide-react";
 
-type Tab = "radio" | "tracks" | "likes" | "playlist";
+export type Tab = "radio" | "tracks" | "likes" | "playlist" | "queue";
 
 interface Props {
   activeTab: Tab;
   onChange: (tab: Tab) => void;
+  queueBadgeCount?: number;
 }
 
 const tabs = [
@@ -12,9 +13,10 @@ const tabs = [
   { id: "tracks" as const, label: "TRACKS", Icon: ListMusic },
   { id: "likes" as const, label: "LIKES", Icon: Heart },
   { id: "playlist" as const, label: "PLAYLISTS", Icon: ListVideo },
+  { id: "queue" as const, label: "QUEUE", Icon: Inbox },
 ];
 
-export function TabBar({ activeTab, onChange }: Props) {
+export function TabBar({ activeTab, onChange, queueBadgeCount }: Props) {
   return (
     <div className="tabbar-outer" role="tablist" aria-label="ナビゲーション">
       <div className="tabbar-pill">
@@ -29,7 +31,14 @@ export function TabBar({ activeTab, onChange }: Props) {
               className={`tabbar-item ${active ? "tabbar-item-active" : ""}`}
               onClick={() => onChange(id)}
             >
-              <Icon size={18} />
+              <div className="tabbar-icon-wrapper">
+                <Icon size={18} />
+                {id === "queue" && queueBadgeCount != null && queueBadgeCount > 0 && (
+                  <span className="tabbar-badge" aria-label={`${queueBadgeCount}件`}>
+                    {queueBadgeCount > 9 ? "9+" : queueBadgeCount}
+                  </span>
+                )}
+              </div>
               <span>{label}</span>
             </button>
           );

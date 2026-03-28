@@ -183,10 +183,10 @@ async def list_all_requests(
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> RequestListResponse:
-    VALID_STATUSES = {"pending", "processing", "completed", "failed"}
-    statuses = [s.strip() for s in status.split(",") if s.strip() in VALID_STATUSES]
+    valid_statuses = {"pending", "processing", "completed", "failed"}
+    statuses = [s.strip() for s in status.split(",") if s.strip() in valid_statuses]
     if not statuses:
-        statuses = list(VALID_STATUSES)
+        statuses = list(valid_statuses)
 
     query = (
         select(Request, Channel)

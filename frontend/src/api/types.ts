@@ -221,6 +221,35 @@ export interface FavoritesResponse {
 }
 
 
+// --- Phase 2 types ---
+
+export type PlayMode = "stream" | "track";
+export type RepeatMode = "off" | "one" | "all";
+
+export interface TrackSearchResponse {
+  id: string;
+  caption: string;
+  title?: string;
+  mood?: string;
+  duration_ms: number | null;
+  bpm: number | null;
+  channel_slug?: string;
+  quality_score?: number;
+  created_at: string;
+}
+
+export interface TrackSearchListResponse {
+  tracks: TrackSearchResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AllRequestsListResponse {
+  requests: RequestDetailResponse[];
+  total: number;
+}
+
 export interface RequestDetailResponse {
   id: string;
   channel_slug: string;

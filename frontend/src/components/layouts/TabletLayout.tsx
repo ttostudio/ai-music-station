@@ -4,6 +4,8 @@ import { FloatingBar } from "../FloatingBar";
 import { ChannelMenu } from "../ChannelMenu";
 import { LyricsScrollPanel } from "../LyricsScrollPanel";
 import { RequestForm } from "../RequestForm";
+import { SearchBar } from "../SearchBar";
+import type { PlaylistPlayerResult } from "../../hooks/usePlaylistPlayer";
 
 interface Props {
   channels: Channel[];
@@ -21,6 +23,7 @@ interface Props {
   onChannelMenuToggle: () => void;
   onShowManager: () => void;
   liked?: boolean;
+  playlistPlayer: PlaylistPlayerResult;
 }
 
 export function TabletLayout({
@@ -39,9 +42,29 @@ export function TabletLayout({
   onChannelMenuToggle,
   onShowManager,
   liked,
+  playlistPlayer,
 }: Props) {
   const channelName = activeChannel?.name ?? "";
   const lyrics = track?.lyrics ?? "";
+  const isTrackMode = playlistPlayer.playMode === "track";
+
+  const handleToggleMode = () => {
+    if (isTrackMode) {
+      playlistPlayer.switchToStream();
+    } else {
+      playlistPlayer.switchToTrack();
+    }
+  };
+
+  const handleToggleTrackPlay = () => {
+    const audio = document.querySelector<HTMLAudioElement>("audio#track-audio");
+    if (!audio) return;
+    if (playlistPlayer.isTrackPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+  };
 
   return (
     <div className="tablet-layout">
@@ -57,6 +80,11 @@ export function TabletLayout({
         />
 
         <div className="tablet-floating-bar-wrapper">
+          {/* Search bar */}
+          <div className="tablet-search-bar">
+            <SearchBar onPlayTrack={(t) => playlistPlayer.playTrack(t)} />
+          </div>
+
           <FloatingBar
             track={track}
             channelName={channelName}
@@ -69,6 +97,20 @@ export function TabletLayout({
             onLyricsToggle={() => {}}
             onChannelMenu={onChannelMenuToggle}
             liked={liked}
+            playMode={playlistPlayer.playMode}
+            currentTrack={playlistPlayer.currentTrack}
+            isTrackPlaying={playlistPlayer.isTrackPlaying}
+            trackElapsedMs={playlistPlayer.trackElapsedMs}
+            trackDurationMs={playlistPlayer.trackDurationMs}
+            shuffle={playlistPlayer.shuffle}
+            repeat={playlistPlayer.repeat}
+            onToggleMode={handleToggleMode}
+            onNextTrack={playlistPlayer.nextTrack}
+            onPrevTrack={playlistPlayer.prevTrack}
+            onToggleTrackPlay={handleToggleTrackPlay}
+            onToggleShuffle={playlistPlayer.toggleShuffle}
+            onCycleRepeat={playlistPlayer.cycleRepeat}
+            onSeekTo={playlistPlayer.seekTo}
           />
           {showChannelMenu && (
             <ChannelMenu
