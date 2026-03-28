@@ -5,7 +5,7 @@ import { TabBar } from "../components/TabBar";
 afterEach(cleanup);
 
 describe("TabBar", () => {
-  it("UT-TB-01: RADIO/TRACKS/LIKES/PLAYLISTS の4タブが描画される", () => {
+  it("UT-TB-01: RADIO/TRACKS/LIKES/PLAYLISTS/QUEUE の5タブが描画される", () => {
     const { getByText } = render(<TabBar activeTab="radio" onChange={vi.fn()} />);
     expect(getByText("RADIO")).toBeInTheDocument();
     expect(getByText("TRACKS")).toBeInTheDocument();
@@ -36,11 +36,11 @@ describe("TabBar", () => {
     expect(radioTab.className).toContain("tabbar-item-active");
   });
 
-  it("UT-TB-06: 各タブに role='tab' が付与される（4タブ）", () => {
+  it("UT-TB-06: 各タブに role='tab' が付与される（5タブ）", () => {
     const { getByRole } = render(<TabBar activeTab="radio" onChange={vi.fn()} />);
     const tablist = getByRole("tablist");
     const tabs = within(tablist).getAllByRole("tab");
-    expect(tabs).toHaveLength(4);
+    expect(tabs).toHaveLength(5);
   });
 
   it("UT-TB-07: タブリストに role='tablist' が付与される", () => {
