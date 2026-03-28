@@ -5,7 +5,8 @@
  */
 import { test, expect } from "@playwright/test";
 
-test.use({ viewport: { width: 1440, height: 900 } });
+// NOTE: PLAYLISTS タブは MobileLayout（<768px）のみ存在。モバイル viewport で検証。
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
 test.describe("プレイリスト内トラック再生", () => {
   test.beforeEach(async ({ page }) => {
@@ -14,8 +15,8 @@ test.describe("プレイリスト内トラック再生", () => {
   });
 
   test("E2E-PC-001: プレイリスト画面を開いてトラックを再生できる", async ({ page }) => {
-    // TRACKS タブが存在することを確認
-    const tracksTab = page.getByRole("tab", { name: /TRACKS/i });
+    // PLAYLISTS タブへ移動
+    const tracksTab = page.getByRole("tab", { name: /PLAYLISTS/i });
     await expect(tracksTab).toBeVisible({ timeout: 5000 });
     await tracksTab.click();
 
@@ -53,7 +54,7 @@ test.describe("プレイリスト内トラック再生", () => {
   });
 
   test("E2E-PC-002: 全曲再生ボタンで Player が Track モードに切り替わる", async ({ page }) => {
-    const tracksTab = page.getByRole("tab", { name: /TRACKS/i });
+    const tracksTab = page.getByRole("tab", { name: /PLAYLISTS/i });
     await expect(tracksTab).toBeVisible({ timeout: 5000 });
     await tracksTab.click();
 
@@ -73,7 +74,7 @@ test.describe("プレイリスト内トラック再生", () => {
   });
 
   test("E2E-PC-002b: 次の曲ボタンで曲が切り替わる", async ({ page }) => {
-    const tracksTab = page.getByRole("tab", { name: /TRACKS/i });
+    const tracksTab = page.getByRole("tab", { name: /PLAYLISTS/i });
     await expect(tracksTab).toBeVisible({ timeout: 5000 });
     await tracksTab.click();
 

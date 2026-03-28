@@ -10,6 +10,13 @@ export default defineConfig({
       "/stream": "http://localhost:8000",
     },
   },
+  preview: {
+    port: 5173,
+    proxy: {
+      "/api": "http://localhost:3200",
+      "/stream": "http://localhost:3200",
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],

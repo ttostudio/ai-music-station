@@ -7,7 +7,8 @@ import { test, expect } from "@playwright/test";
 
 const TEST_PLAYLIST_NAME = `回帰テスト_${Date.now()}`;
 
-test.use({ viewport: { width: 1440, height: 900 } });
+// NOTE: PLAYLISTS タブは MobileLayout（<768px）のみ存在。モバイル viewport で検証。
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
 test.describe("回帰: プレイリスト CRUD", () => {
   test.beforeEach(async ({ page }) => {
@@ -16,8 +17,8 @@ test.describe("回帰: プレイリスト CRUD", () => {
   });
 
   test("REG-002a: プレイリスト作成ボタンが表示される", async ({ page }) => {
-    // TRACKS / PLAYLISTS タブへ移動
-    const tracksTab = page.getByRole("tab", { name: /TRACKS|PLAYLISTS/i }).first();
+    // PLAYLISTS タブへ移動
+    const tracksTab = page.getByRole("tab", { name: /PLAYLISTS/i }).first();
     await expect(tracksTab).toBeVisible({ timeout: 5000 });
     await tracksTab.click();
 
@@ -28,8 +29,8 @@ test.describe("回帰: プレイリスト CRUD", () => {
   });
 
   test("REG-002b: プレイリスト作成 → 一覧に表示される", async ({ page }) => {
-    // TRACKS タブへ移動
-    const tracksTab = page.getByRole("tab", { name: /TRACKS/i });
+    // PLAYLISTS タブへ移動
+    const tracksTab = page.getByRole("tab", { name: /PLAYLISTS/i });
     await expect(tracksTab).toBeVisible({ timeout: 5000 });
     await tracksTab.click();
 
@@ -58,8 +59,8 @@ test.describe("回帰: プレイリスト CRUD", () => {
   });
 
   test("REG-002c: プレイリスト削除 → 一覧から消える", async ({ page }) => {
-    // TRACKS タブへ移動
-    const tracksTab = page.getByRole("tab", { name: /TRACKS/i });
+    // PLAYLISTS タブへ移動
+    const tracksTab = page.getByRole("tab", { name: /PLAYLISTS/i });
     await expect(tracksTab).toBeVisible({ timeout: 5000 });
     await tracksTab.click();
 

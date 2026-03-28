@@ -5,7 +5,8 @@
  */
 import { test, expect } from "@playwright/test";
 
-test.use({ viewport: { width: 1440, height: 900 } });
+// NOTE: QUEUE タブは MobileLayout（<768px）のみ存在。モバイル viewport で検証。
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
 test.describe("リクエストキュー表示", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,27 +14,27 @@ test.describe("リクエストキュー表示", () => {
     await page.waitForLoadState("networkidle");
   });
 
-  test("E2E-PC-003: REQUESTS タブが表示される", async ({ page }) => {
-    const requestsTab = page.getByRole("tab", { name: /REQUESTS/i });
-    await expect(requestsTab).toBeVisible({ timeout: 5000 });
+  test("E2E-PC-003: QUEUE タブが表示される", async ({ page }) => {
+    const queueTab = page.getByRole("tab", { name: /QUEUE/i });
+    await expect(queueTab).toBeVisible({ timeout: 5000 });
   });
 
-  test("E2E-PC-003b: REQUESTS タブをクリックするとリクエストキューが表示される", async ({ page }) => {
-    const requestsTab = page.getByRole("tab", { name: /REQUESTS/i });
-    await expect(requestsTab).toBeVisible({ timeout: 5000 });
-    await requestsTab.click();
+  test("E2E-PC-003b: QUEUE タブをクリックするとリクエストキューが表示される", async ({ page }) => {
+    const queueTab = page.getByRole("tab", { name: /QUEUE/i });
+    await expect(queueTab).toBeVisible({ timeout: 5000 });
+    await queueTab.click();
 
     // リクエストキューコンテナが表示される（空でも可）
     const requestQueue = page.locator(
-      "[data-testid='request-queue'], .request-queue, .requests-tab, .request-list"
+      ".queue-tab-screen, [data-testid='request-queue'], .request-queue, .request-list"
     );
-    await expect(requestQueue.first()).toBeVisible({ timeout: 3000 });
+    await expect(requestQueue.first()).toBeVisible({ timeout: 5000 });
   });
 
   test("E2E-PC-003c: リクエストキューの空状態メッセージが適切に表示される", async ({ page }) => {
-    const requestsTab = page.getByRole("tab", { name: /REQUESTS/i });
-    await expect(requestsTab).toBeVisible({ timeout: 5000 });
-    await requestsTab.click();
+    const queueTab = page.getByRole("tab", { name: /QUEUE/i });
+    await expect(queueTab).toBeVisible({ timeout: 5000 });
+    await queueTab.click();
 
     // キューが空の場合でもUIが壊れていないことを確認
     await expect(page.locator("body")).toBeVisible();
