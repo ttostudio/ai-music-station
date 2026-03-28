@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, cleanup } from "@testing-library/react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 
 vi.mock("../api/client", () => ({
