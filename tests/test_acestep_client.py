@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
 
+from api.services.acestep_client import AceStepError, AceStepTimeoutError
 from worker.acestep_client import (
     ACEStepClient,
-    GenerationError,
     GenerationParams,
-    GenerationTimeoutError,
     _build_prompt,
 )
-from api.services.acestep_client import AceStepError, AceStepTimeoutError
 
 
 @pytest.fixture

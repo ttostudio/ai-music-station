@@ -15,7 +15,6 @@ from api.db import get_session
 from api.main import app
 from worker.models import Channel, Request
 
-
 # ---------------------------------------------------------------------------
 # 共通フィクスチャ
 # ---------------------------------------------------------------------------
