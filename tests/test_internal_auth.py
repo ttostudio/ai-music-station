@@ -47,7 +47,9 @@ class TestInternalAPIAuth:
             )
         assert response.status_code == 401
 
-    def test_now_playing_with_valid_key_passes_auth(self, test_client: TestClient, mock_session: AsyncMock):
+    def test_now_playing_with_valid_key_passes_auth(
+        self, test_client: TestClient, mock_session: AsyncMock
+    ):
         """正しいAPIキーで認証が通ること"""
         channel_mock = MagicMock()
         channel_mock.id = "00000000-0000-0000-0000-000000000010"

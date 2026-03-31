@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from worker.acestep_client import GenerationError, GenerationResult
+from worker.acestep_client import GenerationError
 from worker.models import Request
 from worker.queue_consumer import QueueConsumer
 
@@ -15,8 +15,9 @@ def mock_session_factory():
 
 @pytest.fixture
 def mock_client():
-    from api.services.acestep_client import AceStepJobResult
     from pathlib import Path
+
+    from api.services.acestep_client import AceStepJobResult
 
     client = AsyncMock()
 

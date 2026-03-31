@@ -10,9 +10,9 @@ from dataclasses import dataclass
 
 from api.services.acestep_client import (  # noqa: F401
     AceStepClient,
-    AceStepError as GenerationError,
+    AceStepError,
     AceStepQueueFullError,
-    AceStepTimeoutError as GenerationTimeoutError,
+    AceStepTimeoutError,
     sanitize_bpm,
     sanitize_duration,
     sanitize_lyrics,
@@ -21,11 +21,15 @@ from api.services.acestep_client import (  # noqa: F401
     sanitize_vocal_language,
 )
 
+# Legacy aliases for backward compatibility
+GenerationError = AceStepError
+GenerationTimeoutError = AceStepTimeoutError
+
 # Legacy alias: 既存コードは ACEStepClient 名でも参照できる
 ACEStepClient = AceStepClient
 
 
-def _build_prompt(params: "GenerationParams") -> str:
+def _build_prompt(params: GenerationParams) -> str:
     """GenerationParams からプロンプト文字列を構築する（後方互換ヘルパー）。"""
     parts = [params.caption]
     if params.instrumental and not params.lyrics:
