@@ -9,7 +9,7 @@ import uuid
 
 import pytest
 
-from .conftest import insert_test_channel, insert_test_track, _run_sql
+from .conftest import _run_sql, insert_test_channel, insert_test_track
 
 
 @pytest.mark.integration
@@ -26,7 +26,7 @@ def test_search_returns_200_real_db(test_client):
 def test_search_full_text_real_db(test_client):
     """IT-010: 実 DB に複数トラックを INSERT し、q パラメータで絞り込まれることを確認"""
     unique_id = str(uuid.uuid4())[:8]
-    track = insert_test_track(f"integtest-lofi-{unique_id}", mood="chill")
+    insert_test_track(f"integtest-lofi-{unique_id}", mood="chill")
     insert_test_track(f"integtest-anime-{unique_id}", mood="energy")
 
     response = test_client.get(f"/api/tracks/search?q=integtest-lofi-{unique_id}")
@@ -72,7 +72,7 @@ def test_search_sort_popular_real_db(test_client):
 def test_search_channel_slug_filter_real_db(test_client):
     """IT-011: channel_slug フィルターが動作する（実 DB）"""
     unique_slug = f"it-slug-{str(uuid.uuid4())[:6]}"
-    insert_test_track(f"channel-filter-test", channel_slug=unique_slug)
+    insert_test_track("channel-filter-test", channel_slug=unique_slug)
 
     response = test_client.get(f"/api/tracks/search?channel_slug={unique_slug}")
     assert response.status_code == 200

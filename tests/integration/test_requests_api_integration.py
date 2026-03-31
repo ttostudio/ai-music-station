@@ -8,7 +8,7 @@ import uuid
 
 import pytest
 
-from .conftest import insert_test_channel, insert_test_request
+from .conftest import insert_test_request
 
 
 @pytest.mark.integration
