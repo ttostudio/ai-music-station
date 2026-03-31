@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import update
+from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from worker.models import Track, TrackQualityScore
@@ -57,6 +57,11 @@ class QualityScorer:
         score, breakdown = self._calculate_score(features)
 
         auto_drafted = score < channel_threshold
+
+        # 既存スコアを削除してから新規挿入（重複防止 / UPSERT相当）
+        await session.execute(
+            delete(TrackQualityScore).where(TrackQualityScore.track_id == track_id)
+        )
 
         quality_record = TrackQualityScore(
             id=uuid.uuid4(),

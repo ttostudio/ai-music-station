@@ -222,18 +222,27 @@ class QueueConsumer:
         await session.commit()
         logger.info("Track generated: %s (%d bytes)", file_path, file_size)
 
-        # 品質スコアリング（fire-and-forget）
-        try:
-            threshold = channel.quality_threshold if hasattr(channel, "quality_threshold") else 30.0
-            await self.quality_scorer.score_track(
-                session=session,
-                track_id=track.id,
-                file_path=str(full_path),
-                channel_threshold=threshold,
-            )
-            await session.commit()
-        except Exception as exc:
-            logger.warning("Quality scoring failed for track %s: %s", track.id, exc)
+        # 品質スコアリング（リトライ付き、最大2回、バックオフ1秒）
+        _MAX_SCORE_RETRIES = 2
+        threshold = channel.quality_threshold if hasattr(channel, "quality_threshold") else 30.0
+        for _attempt in range(_MAX_SCORE_RETRIES + 1):
+            try:
+                await self.quality_scorer.score_track(
+                    session=session,
+                    track_id=track.id,
+                    file_path=str(full_path),
+                    channel_threshold=threshold,
+                )
+                await session.commit()
+                break
+            except Exception:
+                logger.exception(
+                    "Quality scoring failed for track %s (attempt %d/%d)",
+                    track.id, _attempt + 1, _MAX_SCORE_RETRIES + 1,
+                )
+                await session.rollback()
+                if _attempt < _MAX_SCORE_RETRIES:
+                    await asyncio.sleep(1.0)
 
         return track
 

@@ -74,7 +74,7 @@ async def rescore_track(
     quality_record = await scorer.score_track(
         session=session,
         track_id=track_id,
-        file_path=track.file_path,
+        file_path="/tracks/" + track.file_path,
         channel_threshold=threshold,
     )
     await session.commit()
