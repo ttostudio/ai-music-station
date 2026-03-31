@@ -3,15 +3,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import IntegrityError
 
 from api.db import get_session
 from api.main import app
-from worker.models import Playlist, PlaylistTrack, Reaction, Track
+from worker.models import Playlist, Track
 
 SESSION_ID = "session-abc-001"
 SESSION_ID_OTHER = "session-xyz-999"
@@ -101,7 +100,12 @@ class TestCreatePlaylist:
             _mock_scalar(0),  # playlist count
             _mock_scalar(0),  # dup check
         ])
-        mock_session.refresh = AsyncMock(side_effect=lambda obj: setattr(obj, 'id', uuid.uuid4()) or setattr(obj, 'created_at', datetime.now(timezone.utc)) or setattr(obj, 'updated_at', datetime.now(timezone.utc)))
+        def _refresh_side_effect(obj):
+            obj.id = uuid.uuid4()
+            obj.created_at = datetime.now(timezone.utc)
+            obj.updated_at = datetime.now(timezone.utc)
+
+        mock_session.refresh = AsyncMock(side_effect=_refresh_side_effect)
 
         response = test_client.post(
             "/api/playlists",

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import logging
 import re
 import urllib.parse
@@ -218,10 +219,8 @@ class AceStepClient:
         duration = params.get("audio_duration")
         for line in content.split("\n"):
             if "BPM" in line and ":" in line:
-                try:
+                with contextlib.suppress(ValueError):
                     bpm = int(line.split(":")[-1].strip())
-                except ValueError:
-                    pass
             if "Key" in line and ":" in line:
                 key_scale = line.split(":")[-1].strip()
 

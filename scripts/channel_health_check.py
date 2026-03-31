@@ -4,8 +4,10 @@
 
 使い方:
     docker exec product-ai-music-station-api-1 python -m scripts.channel_health_check
-    docker exec product-ai-music-station-api-1 python -m scripts.channel_health_check --channel bossanova
-    docker exec product-ai-music-station-api-1 python -m scripts.channel_health_check --fail-on-mismatch
+    docker exec product-ai-music-station-api-1 \
+        python -m scripts.channel_health_check --channel bossanova
+    docker exec product-ai-music-station-api-1 \
+        python -m scripts.channel_health_check --fail-on-mismatch
 """
 from __future__ import annotations
 
@@ -105,9 +107,9 @@ async def check_channel(
     playlist_tracks = 0
     if playlist_path.exists():
         lines = [
-            l.strip()
-            for l in playlist_path.read_text(encoding="utf-8").splitlines()
-            if l.strip()
+            line.strip()
+            for line in playlist_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
         ]
         playlist_tracks = len(lines)
 
@@ -152,7 +154,11 @@ async def main(target_slugs: list[str] | None, fail_on_mismatch: bool) -> None:
 
         # レポート表示
         print("\n" + "=" * 72)
-        print(f"{'チャンネル':<16} {'状態':<12} {'DB(active)':<12} {'ファイル':<10} {'ファントム':<10} {'プレイリスト':<12} {'自動生成'}")
+        header = (
+            f"{'チャンネル':<16} {'状態':<12} {'DB(active)':<12}"
+            f" {'ファイル':<10} {'ファントム':<10} {'プレイリスト':<12} {'自動生成'}"
+        )
+        print(header)
         print("-" * 72)
         has_issue = False
         for r in reports:
@@ -175,11 +181,15 @@ async def main(target_slugs: list[str] | None, fail_on_mismatch: bool) -> None:
                 if r.db_active == 0:
                     print(f"    - アクティブトラックが 0 件（退役済み: {r.db_retired} 件）")
                 if r.phantom_count > 0:
-                    print(f"    - ファントムレコード: {r.phantom_count} 件（DBにあるがファイルなし）")
+                    print(
+                        f"    - ファントムレコード: {r.phantom_count} 件（DBにあるがファイルなし）"
+                    )
                 if r.playlist_tracks == 0:
-                    print(f"    - playlist.m3u が空またはなし")
+                    print("    - playlist.m3u が空またはなし")
                 if r.orphan_count > 0:
-                    print(f"    - オーファンファイル: {r.orphan_count} 件（ファイルはあるがDBになし）")
+                    print(
+                        f"    - オーファンファイル: {r.orphan_count} 件（ファイルはあるがDBになし）"
+                    )
         else:
             print("\n全チャンネル正常です。")
 

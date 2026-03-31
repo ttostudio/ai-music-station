@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import platform
 import random
 import uuid
@@ -16,7 +15,6 @@ from api.services.acestep_client import (
     AceStepClient,
     AceStepError,
     AceStepQueueFullError,
-    AceStepTimeoutError,
     sanitize_bpm,
     sanitize_duration,
     sanitize_lyrics,
@@ -24,7 +22,7 @@ from api.services.acestep_client import (
     sanitize_prompt,
     sanitize_vocal_language,
 )
-from worker.acestep_client import GenerationError, GenerationParams, GenerationTimeoutError
+from worker.acestep_client import GenerationError, GenerationParams
 from worker.auto_generator import run_auto_generation
 from worker.channel_presets import get_preset
 from worker.config import settings
@@ -223,9 +221,9 @@ class QueueConsumer:
         logger.info("Track generated: %s (%d bytes)", file_path, file_size)
 
         # 品質スコアリング（リトライ付き、最大2回、バックオフ1秒）
-        _MAX_SCORE_RETRIES = 2
+        max_score_retries = 2
         threshold = channel.quality_threshold if hasattr(channel, "quality_threshold") else 30.0
-        for _attempt in range(_MAX_SCORE_RETRIES + 1):
+        for _attempt in range(max_score_retries + 1):
             try:
                 await self.quality_scorer.score_track(
                     session=session,
@@ -238,10 +236,10 @@ class QueueConsumer:
             except Exception:
                 logger.exception(
                     "Quality scoring failed for track %s (attempt %d/%d)",
-                    track.id, _attempt + 1, _MAX_SCORE_RETRIES + 1,
+                    track.id, _attempt + 1, max_score_retries + 1,
                 )
                 await session.rollback()
-                if _attempt < _MAX_SCORE_RETRIES:
+                if _attempt < max_score_retries:
                     await asyncio.sleep(1.0)
 
         return track

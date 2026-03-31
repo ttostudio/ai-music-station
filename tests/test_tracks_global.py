@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,7 +14,6 @@ from fastapi.testclient import TestClient
 from api.db import get_session
 from api.main import app
 from worker.models import Channel, Track
-
 
 # ---------------------------------------------------------------------------
 # 共通フィクスチャ

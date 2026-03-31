@@ -1,6 +1,7 @@
 """bossanova/classical/electronic チャンネル無音問題修正スクリプト
 
-Step 1: ファントムレコード退役（DBレコードはあるがファイルが存在しないものを is_retired=true に更新）
+Step 1: ファントムレコード退役
+    （DBレコードはあるがファイルが存在しないものを is_retired=true に更新）
 Step 2: クロスチャンネル再配置（jazz→bossanova, game→classical, egushugi+lofi→electronic）
 Step 3: playlist.m3u 更新
 

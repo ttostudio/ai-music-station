@@ -9,9 +9,8 @@ import json
 import logging
 import re
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -219,9 +218,7 @@ class QualityScorer:
         mv = features.mean_volume_db
         if -20 <= mv <= -6:
             breakdown["mean_volume"] = 25.0
-        elif -25 <= mv < -20:
-            breakdown["mean_volume"] = 18.0
-        elif -6 < mv <= -3:
+        elif -25 <= mv < -20 or -6 < mv <= -3:
             breakdown["mean_volume"] = 18.0
         elif mv > -3:
             breakdown["mean_volume"] = 5.0
