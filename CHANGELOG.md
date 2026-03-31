@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added (Issue #85 — トラック品質スコアリング修正)
+- `Dockerfile.api`: ffmpeg/ffprobe をインストール（品質スコアリングの動作に必須）
+- `scripts/batch_score.py`: 未スコア曲の一括スコアリングスクリプト
+  - `docker exec product-ai-music-station-api-1 python -m scripts.batch_score` で実行
+  - `--dry-run` オプション対応
+  - `--concurrency` オプション（デフォルト5並行）
+  - 進捗表示（processed/total）・完了サマリー
+- `scripts/__init__.py`: scripts パッケージ化（`python -m scripts.batch_score` 対応）
+
+### Fixed (Issue #85)
+- `api/routers/quality.py`: rescore エンドポイントのファイルパスを相対パスから絶対パスへ修正
+  - `track.file_path` → `/tracks/` + `track.file_path`（コンテナ内マウントパス）
+- `worker/queue_consumer.py`: 品質スコアリング失敗時のエラーハンドリング改善
+  - `logger.warning` → `logger.exception`（スタックトレース付きログ）
+  - リトライ機構追加（最大2回、バックオフ1秒、失敗時セッションロールバック）
+- `worker/quality_scorer.py`: スコア記録の重複防止（delete-before-insert による UPSERT 相当）
+
 ### Added (Phase 2 — フロントエンド: Player デュアルモード・プレイリスト再生・グローバル検索・リクエストキュー)
 - `hooks/usePlaylistPlayer.ts`: トラック再生フック (Fisher-Yates シャッフル、リピート、prev/next)
 - `components/SearchBar.tsx`: グローバル検索バー (300ms デバウンス、デスクトップ/タブレット/モバイル対応)
