@@ -4,10 +4,9 @@
 """
 from __future__ import annotations
 
-import uuid
 import subprocess
-import json
-from typing import Generator
+import uuid
+from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,7 +16,6 @@ from sqlalchemy.pool import NullPool
 
 from api.db import get_session
 from api.main import app
-from worker.models import Channel, Track, Request
 
 # テスト用 DB URL（localhost:5433 = docker compose postgres container）
 TEST_DATABASE_URL = "postgresql+asyncpg://app:changeme@localhost:5433/test_music_station"
@@ -48,10 +46,12 @@ def test_client() -> Generator:
             yield s
 
     app.dependency_overrides[get_session] = override_session
-    with patch("api.main.start_worker", new=AsyncMock()):
-        with patch("api.main.stop_worker", new=AsyncMock()):
-            with TestClient(app) as client:
-                yield client
+    with (
+        patch("api.main.start_worker", new=AsyncMock()),
+        patch("api.main.stop_worker", new=AsyncMock()),
+        TestClient(app) as client,
+    ):
+        yield client
     app.dependency_overrides.clear()
 
 
