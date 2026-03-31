@@ -8,7 +8,7 @@ python-multipart==0.0.22
 sqlalchemy[asyncio]==2.0.48
 asyncpg==0.31.0
 psycopg2-binary==2.9.11
-alembic==1.14.1
+alembic==1.18.4
 
 # HTTP Client (worker -> ACE-Step API)
 httpx==0.28.1
