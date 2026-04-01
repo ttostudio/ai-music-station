@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Channel, Track } from "../../api/types";
 import { TheaterView } from "../TheaterView";
 import { FloatingBar } from "../FloatingBar";
@@ -44,6 +45,7 @@ export function TabletLayout({
   liked,
   playlistPlayer,
 }: Props) {
+  const [showLyrics, setShowLyrics] = useState(true);
   const channelName = activeChannel?.name ?? "";
   const lyrics = track?.lyrics ?? "";
   const isTrackMode = playlistPlayer.playMode === "track";
@@ -91,10 +93,10 @@ export function TabletLayout({
             isPlaying={isPlaying}
             elapsedMs={elapsedMs}
             durationMs={durationMs}
-            lyricsActive={false}
+            lyricsActive={showLyrics}
             onPlayPause={onTogglePlay}
             onLike={onLike}
-            onLyricsToggle={() => {}}
+            onLyricsToggle={() => setShowLyrics((v) => !v)}
             onChannelMenu={onChannelMenuToggle}
             liked={liked}
             playMode={playlistPlayer.playMode}
@@ -126,10 +128,12 @@ export function TabletLayout({
 
       {/* Lower: lyrics + request form */}
       <div className="tablet-lower">
-        {lyrics ? (
-          <LyricsScrollPanel lyrics={lyrics} elapsedMs={elapsedMs} durationMs={durationMs} variant="tablet" />
-        ) : (
-          <div className="tablet-no-lyrics">♪ インストゥルメンタル</div>
+        {showLyrics && (
+          lyrics ? (
+            <LyricsScrollPanel lyrics={lyrics} elapsedMs={elapsedMs} durationMs={durationMs} variant="tablet" />
+          ) : (
+            <div className="tablet-no-lyrics">♪ インストゥルメンタル</div>
+          )
         )}
         <div className="px-4 pb-4">
           <RequestForm channels={channels} defaultSlug={activeSlug ?? undefined} />
