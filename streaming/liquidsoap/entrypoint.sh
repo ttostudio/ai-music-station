@@ -34,7 +34,7 @@ done
 # Liquidsoap設定を動的生成
 cat > /tmp/radio.liq << LIQEOF
 # AI Music Station — 統合ラジオ設定（全チャンネル）
-silence_file = "/etc/liquidsoap/silence.flac"
+silence_file = "/etc/liquidsoap/silence.wav"
 silence = single(silence_file)
 
 icecast_host = "${ICECAST_HOST}"
@@ -51,8 +51,8 @@ for ch in $CHANNELS; do
 # --- Channel: ${ch} ---
 ${var}_playlist = playlist(mode="normal", reload_mode="watch", "/tracks/${ch}/playlist.m3u")
 ${var}_dir = playlist(mode="randomize", reload_mode="watch", "/tracks/${ch}")
-${var}_radio = crossfade(fallback(track_sensitive=true, [${var}_playlist, ${var}_dir]))
-${var}_radio = fallback(track_sensitive=true, [${var}_radio, silence])
+${var}_radio = playlist(mode="randomize", reload=10, "/tracks/${ch}/playlist.m3u")
+${var}_radio = fallback(track_sensitive=false, [${var}_radio, silence])
 
 output.icecast(
   %vorbis(quality=0.5),
