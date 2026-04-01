@@ -86,41 +86,61 @@ BEING_PROMPTS = [
 from typing import Optional
 
 def generate_track(client: httpx.Client, api_url: str, prompt_data: dict, duration: int = 10) -> Optional[bytes]:
-    """ACE-Step APIで楽曲を生成し、MP3バイトを返す。"""
+    """ACE-Step APIで楽曲を生成し、MP3バイトを返す。/release_task API使用（use_tiled_decode=false必須）。"""
     payload = {
-        "model": "ACE-Step",
-        "messages": [
-            {
-                "role": "user",
-                "content": prompt_data["prompt"],
-            }
-        ],
+        "prompt": prompt_data["prompt"],
+        "lyrics": prompt_data.get("lyrics", ""),
         "audio_duration": duration,
         "infer_step": 60,
+        "audio_format": "mp3",
+        "use_tiled_decode": False,
     }
-
-    # lyrics があればメッセージに追加
-    if prompt_data.get("lyrics"):
-        payload["messages"][0]["content"] += f"\n\n[lyrics]\n{prompt_data['lyrics']}"
 
     print(f"  生成中: {prompt_data['title']} (duration={duration}s)...")
     try:
         resp = client.post(
-            f"{api_url}/v1/chat/completions",
+            f"{api_url}/release_task",
             json=payload,
-            timeout=300.0,  # 5分タイムアウト
+            timeout=30.0,
         )
         resp.raise_for_status()
-        data = resp.json()
-
-        # base64 MP3を抽出
-        audio_url = data["choices"][0]["message"]["audio"][0]["audio_url"]["url"]
-        if audio_url.startswith("data:audio/mpeg;base64,"):
-            b64_data = audio_url.split(",", 1)[1]
-            return base64.b64decode(b64_data)
-        else:
-            print(f"  ⚠ 予期しないaudio_url形式: {audio_url[:50]}...")
+        task_data = resp.json()
+        job_id = task_data.get("data", {}).get("task_id") or task_data.get("data", {}).get("job_id")
+        if not job_id:
+            print(f"  ✗ task_id取得失敗: {task_data}")
             return None
+
+        print(f"  ジョブ投入: {job_id}")
+
+        for _ in range(60):
+            time.sleep(5)
+            poll = client.post(
+                f"{api_url}/query_result",
+                json={"job_ids": [job_id]},
+                timeout=10.0,
+            )
+            poll.raise_for_status()
+            result = poll.json()
+            data = result.get("data", [])
+            jobs = data if isinstance(data, list) else data.get("results", [])
+            if not jobs:
+                continue
+            job = jobs[0]
+            status = job.get("status", "")
+            if status == "completed":
+                audio_url = job.get("audio_url", "")
+                if "base64," in audio_url:
+                    b64_data = audio_url.split(",", 1)[1]
+                    return base64.b64decode(b64_data)
+                else:
+                    print(f"  ⚠ 予期しないaudio_url形式: {str(audio_url)[:50]}...")
+                    return None
+            elif status == "failed":
+                print(f"  ✗ 生成失敗: {job.get('error', 'unknown')}")
+                return None
+
+        print(f"  ✗ タイムアウト（5分）")
+        return None
 
     except httpx.TimeoutException:
         print(f"  ✗ タイムアウト: {prompt_data['title']}")
