@@ -16,7 +16,12 @@
 		header Access-Control-Allow-Methods "GET, OPTIONS"
 		header Access-Control-Allow-Headers "*"
 		uri strip_prefix /stream
-		reverse_proxy icecast:8000
+		reverse_proxy icecast:8000 {
+			flush_interval -1
+			transport http {
+				compression off
+			}
+		}
 	}
 
 	handle {
