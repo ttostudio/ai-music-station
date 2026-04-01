@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # --- Channel ---
 
@@ -29,7 +29,8 @@ class ChannelResponse(BaseModel):
 class ChannelDetailResponse(ChannelResponse):
     default_bpm_min: int
     default_bpm_max: int
-    default_duration: int
+    min_duration: int
+    max_duration: int
     default_instrumental: bool
 
 
@@ -155,14 +156,21 @@ class ChannelCreateBody(BaseModel):
     mood_description: str | None = None
     default_bpm_min: int = Field(80, ge=30, le=300)
     default_bpm_max: int = Field(120, ge=30, le=300)
-    default_duration: int = Field(180, ge=10, le=600)
+    min_duration: int = Field(180, ge=10, le=600)
+    max_duration: int = Field(600, ge=10, le=600)
     default_key: str | None = Field(None, max_length=10)
     default_instrumental: bool = True
-    prompt_template: str = Field(..., min_length=1)
+    prompt_template: str = Field("", max_length=5000)
     vocal_language: str | None = Field(None, max_length=10)
     auto_generate: bool = True
     min_stock: int = Field(5, ge=0, le=100)
     max_stock: int = Field(50, ge=1, le=500)
+
+    @model_validator(mode="after")
+    def validate_duration_range(self) -> "ChannelCreateBody":
+        if self.min_duration > self.max_duration:
+            raise ValueError("min_duration は max_duration 以下にしてください")
+        return self
 
 
 class ChannelFullResponse(BaseModel):
@@ -174,7 +182,8 @@ class ChannelFullResponse(BaseModel):
     is_active: bool
     default_bpm_min: int
     default_bpm_max: int
-    default_duration: int
+    min_duration: int
+    max_duration: int
     default_key: str | None
     default_instrumental: bool
     prompt_template: str

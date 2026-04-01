@@ -35,7 +35,8 @@ def create_body():
         "prompt_template": "electronic ambient music",
         "default_bpm_min": 100,
         "default_bpm_max": 140,
-        "default_duration": 200,
+        "min_duration": 180,
+        "max_duration": 400,
     }
 
 
@@ -49,7 +50,8 @@ def existing_channel():
         is_active=True,
         default_bpm_min=100,
         default_bpm_max=140,
-        default_duration=200,
+        min_duration=180,
+        max_duration=400,
         default_instrumental=True,
         prompt_template="electronic ambient music",
         auto_generate=True,
@@ -104,12 +106,27 @@ class TestCreateChannel:
         response = test_client.post("/api/channels", json=create_body)
         assert response.status_code == 422
 
-    def test_rejects_missing_prompt_template(
+    def test_accepts_missing_prompt_template(
         self, test_client, mock_session, create_body,
     ):
+        """prompt_template はオプション（省略時は空文字列デフォルト）"""
         del create_body["prompt_template"]
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+
+        async def fake_refresh(obj):
+            if obj.id is None:
+                obj.id = uuid.uuid4()
+            if obj.is_active is None:
+                obj.is_active = True
+
+        mock_session.refresh = AsyncMock(side_effect=fake_refresh)
+
         response = test_client.post("/api/channels", json=create_body)
-        assert response.status_code == 422
+        assert response.status_code == 201
 
 
 class TestUpdateChannel:

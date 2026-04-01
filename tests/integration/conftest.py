@@ -65,10 +65,10 @@ def insert_test_channel(slug: str) -> dict:
 
     _run_sql(f"""
         INSERT INTO channels (id, slug, name, description, is_active,
-            default_bpm_min, default_bpm_max, default_duration, default_instrumental,
+            default_bpm_min, default_bpm_max, min_duration, max_duration, default_instrumental,
             prompt_template, created_at, updated_at)
         VALUES ('{ch_id}', '{slug}', 'Test {slug}', 'Integration test', true,
-            70, 90, 180, true, 'test', NOW(), NOW())
+            70, 90, 180, 600, true, 'test', NOW(), NOW())
         ON CONFLICT (slug) DO NOTHING;
     """)
     existing = _run_sql(f"SELECT id FROM channels WHERE slug = '{slug}' LIMIT 1;")

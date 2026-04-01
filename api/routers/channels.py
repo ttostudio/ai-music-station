@@ -91,7 +91,8 @@ async def get_channel(
         **base.model_dump(),
         default_bpm_min=channel.default_bpm_min,
         default_bpm_max=channel.default_bpm_max,
-        default_duration=channel.default_duration,
+        min_duration=channel.min_duration,
+        max_duration=channel.max_duration,
         default_instrumental=channel.default_instrumental,
     )
 
@@ -122,7 +123,8 @@ async def patch_channel(
         **base.model_dump(),
         default_bpm_min=channel.default_bpm_min,
         default_bpm_max=channel.default_bpm_max,
-        default_duration=channel.default_duration,
+        min_duration=channel.min_duration,
+        max_duration=channel.max_duration,
         default_instrumental=channel.default_instrumental,
     )
 
@@ -137,7 +139,8 @@ def _channel_to_full_response(channel: Channel) -> ChannelFullResponse:
         is_active=channel.is_active,
         default_bpm_min=channel.default_bpm_min,
         default_bpm_max=channel.default_bpm_max,
-        default_duration=channel.default_duration,
+        min_duration=channel.min_duration,
+        max_duration=channel.max_duration,
         default_key=channel.default_key,
         default_instrumental=channel.default_instrumental,
         prompt_template=channel.prompt_template,

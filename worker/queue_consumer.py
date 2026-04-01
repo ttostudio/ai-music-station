@@ -90,7 +90,7 @@ class QueueConsumer:
 
     def build_generation_params(self, request: Request, channel: Channel) -> GenerationParams:
         preset = get_preset(channel.slug)
-        base_caption = preset.prompt_template if preset else channel.prompt_template
+        base_caption = preset.prompt_template if preset else (channel.prompt_template or channel.name)
 
         _, clean_caption = _split_title_caption(request.caption)
         caption = clean_caption or base_caption
@@ -103,7 +103,12 @@ class QueueConsumer:
         elif bpm is None:
             bpm = random.randint(channel.default_bpm_min, channel.default_bpm_max)
 
-        duration = request.duration or (preset.duration if preset else channel.default_duration)
+        if request.duration:
+            duration = request.duration
+        elif preset:
+            duration = preset.duration
+        else:
+            duration = random.randint(channel.min_duration, channel.max_duration)
         key = request.music_key or (preset.default_key if preset else channel.default_key)
         instrumental = preset.instrumental if preset else channel.default_instrumental
         vocal_language = preset.vocal_language if preset else channel.vocal_language
