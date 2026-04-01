@@ -80,6 +80,67 @@ BEING_PROMPTS = [
                   "[verse]\n壊れた傘を 握りしめたまま\n君がいた場所を ただ見つめてた\n"
                   "[chorus]\nRainy blues 忘れられないなら\nせめてこの歌に 想いを込めて",
     },
+    # --- 追加6曲 (#897) ---
+    {
+        "title": "Dreams On Fire",
+        "prompt": "90s Japanese pop rock, powerful female vocal, passionate, "
+                  "brass section and rock band, energetic chorus, "
+                  "Okubo Maki style, motivational anthem, key of B flat major, 150 bpm",
+        "lyrics": "[verse]\n朝焼けの空に 誓いを立てた\n誰にも負けない 強さが欲しい\n"
+                  "[chorus]\nDreams on fire 夢を燃やせ\nどんな壁だって 越えてみせる\n"
+                  "[verse]\n転んだ数だけ 立ち上がれるから\nこの手を離さないで\n"
+                  "[chorus]\nDreams on fire 心を燃やせ\n最後に笑うのは 私たちだから",
+    },
+    {
+        "title": "Sudden Love",
+        "prompt": "90s Japanese pop, bright female vocal duo, catchy pop melody, "
+                  "synth and guitar, dance beat, MANISH style, "
+                  "love song, cheerful energy, key of E major, 135 bpm",
+        "lyrics": "[verse]\n突然の出会いに 胸が高鳴る\n運命なんて 信じてなかったのに\n"
+                  "[chorus]\nSudden love 恋に落ちた\nこの気持ちは もう止められない\n"
+                  "[verse]\n笑顔の裏に 隠した想い\n今日こそ伝えたい\n"
+                  "[chorus]\nSudden love 素直になれたら\nきっと世界は もっと輝くから",
+    },
+    {
+        "title": "Wind Chaser",
+        "prompt": "90s Japanese rock, energetic male vocal, punk rock influence, "
+                  "fast guitar, driving rhythm, BAAD style, "
+                  "youth anthem, rebellious spirit, key of A major, 165 bpm",
+        "lyrics": "[verse]\n風を追いかけて 走り出した午後\nルールなんか 知らない\n"
+                  "[chorus]\nWind chaser 自由を掴め\n誰かの真似じゃない 俺の道を行く\n"
+                  "[verse]\n退屈な毎日 蹴り飛ばして\n本当の自分を 探しに行こう\n"
+                  "[chorus]\nWind chaser 風になれ\nこの街を飛び出せ 今すぐに",
+    },
+    {
+        "title": "Diamond Ocean",
+        "prompt": "90s Japanese pop rock, melodic male vocal, anthemic rock, "
+                  "soaring guitar melody, Oda Tetsuro style, "
+                  "ocean and freedom imagery, epic arrangement, key of D major, 140 bpm",
+        "lyrics": "[verse]\nダイヤモンドの海に 船を出そう\n地図にない場所を 目指して\n"
+                  "[chorus]\n輝く波の向こうに 未来がある\nDiamond ocean 漕ぎ出せ\n"
+                  "[verse]\n嵐が来ても 錨を上げろ\n信じた道は 間違いじゃない\n"
+                  "[chorus]\n輝く波の彼方に 夢がある\nDiamond ocean 止まるな",
+    },
+    {
+        "title": "Starlight Memory",
+        "prompt": "90s Japanese pop, gentle female vocal, nostalgic ballad, "
+                  "piano and strings, soft rock arrangement, "
+                  "Komatsu Miho style, bittersweet love, key of F major, 85 bpm",
+        "lyrics": "[verse]\n星降る夜に 思い出すのは\nあなたと過ごした 短い季節\n"
+                  "[chorus]\nStarlight memory 消えないで\nあの日の約束 まだ覚えてる\n"
+                  "[verse]\n手紙を書いては 破り捨てた\n素直になれない 自分が嫌で\n"
+                  "[chorus]\nStarlight memory 輝いて\nいつかまた会える日を 信じてる",
+    },
+    {
+        "title": "Brave Heart Rising",
+        "prompt": "90s Japanese pop rock, male vocal, FIELD OF VIEW style, "
+                  "dramatic build-up, soaring chorus, rock ballad, "
+                  "emotional guitar, inspirational, key of C major, 125 bpm",
+        "lyrics": "[verse]\n突然の別れに 立ち尽くした\n何も見えない 暗闇の中\n"
+                  "[chorus]\nBrave heart rising 立ち上がれ\nまだ終わりじゃない この物語は\n"
+                  "[verse]\n傷ついた翼で それでも飛べる\n信じる心が あれば\n"
+                  "[chorus]\nBrave heart rising 夜明けを待て\n必ず来る 新しい朝が",
+    },
 ]
 
 
