@@ -296,6 +296,7 @@ class Playlist(Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
+    cover_image_url: Mapped[Optional[str]] = mapped_column(Text)
     session_id: Mapped[Optional[str]] = mapped_column(String(100))
     is_public: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true"

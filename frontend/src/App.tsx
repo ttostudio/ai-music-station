@@ -6,6 +6,7 @@ import { useElapsedTime } from "./hooks/useElapsedTime";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useBreakpoint } from "./hooks/useBreakpoint";
 import { usePlaylistPlayer, type PlayMode } from "./hooks/usePlaylistPlayer";
+import { usePlayHistory } from "./hooks/usePlayHistory";
 import { resumeAudioContext } from "./components/AudioVisualizer";
 import { MobileLayout } from "./components/layouts/MobileLayout";
 import { TabletLayout } from "./components/layouts/TabletLayout";
@@ -59,6 +60,9 @@ export default function App() {
     handleSwitchPlayMode,
     getTrackAudioUrl,
   );
+
+  // Play history
+  const { history: playHistory, addToHistory, clearHistory } = usePlayHistory();
 
   const togglePlay = useCallback(async () => {
     if (!audioRef.current || !streamUrl) return;
@@ -139,6 +143,13 @@ export default function App() {
     if (trackAudioRef.current) trackAudioRef.current.volume = volume;
   }, [volume]);
 
+  // Record play history when current track changes
+  useEffect(() => {
+    if (playlistPlayer.currentTrack && playlistPlayer.playMode === "track") {
+      addToHistory(playlistPlayer.currentTrack);
+    }
+  }, [playlistPlayer.currentTrack?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useKeyboardShortcuts({
     onTogglePlay: togglePlay,
     onVolumeUp: handleVolumeUp,
@@ -218,6 +229,8 @@ export default function App() {
           onLike={handleLike}
           liked={liked}
           playlistPlayer={playlistPlayer}
+          playHistory={playHistory}
+          onClearHistory={clearHistory}
         />
       )}
 

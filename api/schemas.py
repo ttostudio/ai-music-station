@@ -330,17 +330,20 @@ class GenerateRequestBody(BaseModel):
 class PlaylistCreateBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
+    cover_image_url: str | None = Field(None, max_length=2048)
 
 
 class PlaylistUpdateBody(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
+    cover_image_url: str | None = Field(None, max_length=2048)
 
 
 class PlaylistSummaryResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    cover_image_url: str | None = None
     track_count: int
     created_at: datetime
     updated_at: datetime
@@ -350,6 +353,7 @@ class PlaylistResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    cover_image_url: str | None = None
     track_count: int
     created_at: datetime
     updated_at: datetime
@@ -380,6 +384,7 @@ class PlaylistDetailResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    cover_image_url: str | None = None
     track_count: int
     created_at: datetime
     updated_at: datetime

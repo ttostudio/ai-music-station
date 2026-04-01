@@ -297,3 +297,111 @@ class TestReorderTracks:
             headers={"X-Session-ID": SESSION_ID},
         )
         assert response.status_code == 403
+
+
+# ========================================
+# FR-01b: カバー画像URL
+# ========================================
+
+class TestCoverImageUrl:
+    """FR-01b: cover_image_url フィールドのサポート"""
+
+    def test_create_with_cover_image_url(self, test_client, mock_session):
+        """カバー画像URL付きでプレイリストを作成できる"""
+        mock_session.execute = AsyncMock(side_effect=[
+            _mock_scalar(0),  # playlist count
+            _mock_scalar(0),  # dup check
+        ])
+        def _refresh_side_effect(obj):
+            obj.id = uuid.uuid4()
+            obj.cover_image_url = "https://example.com/cover.jpg"
+            obj.created_at = datetime.now(timezone.utc)
+            obj.updated_at = datetime.now(timezone.utc)
+        mock_session.refresh = AsyncMock(side_effect=_refresh_side_effect)
+
+        response = test_client.post(
+            "/api/playlists",
+            json={"name": "画像付きリスト", "cover_image_url": "https://example.com/cover.jpg"},
+            headers={"X-Session-ID": SESSION_ID},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["cover_image_url"] == "https://example.com/cover.jpg"
+
+    def test_cover_image_url_in_response(self, test_client, mock_session, sample_playlist):
+        """GET レスポンスに cover_image_url が含まれる"""
+        sample_playlist.cover_image_url = "https://example.com/img.png"
+        sample_playlist.playlist_tracks = []
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = sample_playlist
+        mock_session.execute = AsyncMock(side_effect=[
+            result,           # get playlist with tracks
+            _mock_scalar(0),  # track count
+        ])
+
+        response = test_client.get(
+            f"/api/playlists/{sample_playlist.id}",
+            headers={"X-Session-ID": SESSION_ID},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cover_image_url"] == "https://example.com/img.png"
+
+
+# ========================================
+# FR-01c: プレイリスト複製
+# ========================================
+
+class TestDuplicatePlaylist:
+    """FR-01c: POST /api/playlists/{id}/duplicate"""
+
+    def test_duplicate_playlist_success(self, test_client, mock_session, sample_playlist):
+        """正常複製 → 201"""
+        sample_playlist.playlist_tracks = []
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = sample_playlist
+
+        def _refresh_side_effect(obj):
+            obj.id = uuid.uuid4()
+            obj.created_at = datetime.now(timezone.utc)
+            obj.updated_at = datetime.now(timezone.utc)
+
+        mock_session.execute = AsyncMock(side_effect=[
+            result,           # get original playlist
+            _mock_scalar(1),  # session playlist count
+            _mock_scalar(0),  # new playlist track count
+        ])
+        mock_session.refresh = AsyncMock(side_effect=_refresh_side_effect)
+
+        response = test_client.post(
+            f"/api/playlists/{sample_playlist.id}/duplicate",
+            headers={"X-Session-ID": SESSION_ID},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "のコピー" in data["name"]
+
+    def test_duplicate_playlist_not_found(self, test_client, mock_session):
+        """存在しないプレイリスト → 404"""
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=result)
+
+        response = test_client.post(
+            f"/api/playlists/{uuid.uuid4()}/duplicate",
+            headers={"X-Session-ID": SESSION_ID},
+        )
+        assert response.status_code == 404
+
+    def test_duplicate_playlist_forbidden(self, test_client, mock_session, sample_playlist):
+        """他セッション → 403"""
+        sample_playlist.session_id = SESSION_ID_OTHER
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = sample_playlist
+        mock_session.execute = AsyncMock(return_value=result)
+
+        response = test_client.post(
+            f"/api/playlists/{sample_playlist.id}/duplicate",
+            headers={"X-Session-ID": SESSION_ID},
+        )
+        assert response.status_code == 403

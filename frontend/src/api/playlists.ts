@@ -1,5 +1,6 @@
 import type {
   FavoritesResponse,
+  Playlist,
   PlaylistAddTrackResponse,
   PlaylistCreateBody,
   PlaylistDeleteResponse,
@@ -111,6 +112,15 @@ export async function reorderPlaylistTracks(
       method: "PUT",
       body: JSON.stringify(body),
     },
+  );
+}
+
+export async function duplicatePlaylist(
+  playlistId: string,
+): Promise<Playlist> {
+  return fetchJSON<Playlist>(
+    `${BASE_URL}/playlists/${playlistId}/duplicate`,
+    { method: "POST" },
   );
 }
 

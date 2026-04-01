@@ -1,10 +1,12 @@
 import type { Channel, Track } from "../../api/types";
+import type { HistoryEntry } from "../../hooks/usePlayHistory";
 import { TabBar, type Tab } from "../TabBar";
 import { MiniPlayer } from "../MiniPlayer";
 import { NowPlayingScreen } from "../NowPlayingScreen";
 import { KaraokeScreen } from "../KaraokeScreen";
 import { ChannelManager } from "../ChannelManager";
 import { TrackHistory } from "../TrackHistory";
+import { PlayHistory } from "../PlayHistory";
 import { RequestForm } from "../RequestForm";
 import { PlaylistList } from "../PlaylistList";
 import { PlaylistDetail } from "../PlaylistDetail";
@@ -39,6 +41,8 @@ interface Props {
   onLike: () => void;
   liked?: boolean;
   playlistPlayer: PlaylistPlayerResult;
+  playHistory?: HistoryEntry[];
+  onClearHistory?: () => void;
 }
 
 function getChannelIcon(slug: string): string {
@@ -79,6 +83,8 @@ export function MobileLayout({
   onLike,
   liked,
   playlistPlayer,
+  playHistory = [],
+  onClearHistory,
 }: Props) {
   const channelName = activeChannel?.name ?? "";
   const visibleChannels = channels.filter((c) => c.is_active);
@@ -220,10 +226,13 @@ export function MobileLayout({
               <Music size={20} />
               <span>再生履歴</span>
             </div>
-            {activeSlug ? (
+            <PlayHistory
+              history={playHistory}
+              onPlayTrack={(t) => playlistPlayer.playTrack(t)}
+              onClear={onClearHistory ?? (() => {})}
+            />
+            {activeSlug && (
               <TrackHistory channelSlug={activeSlug} nowPlayingId={track?.id} />
-            ) : (
-              <div className="mobile-empty-state">チャンネルを選択してください</div>
             )}
           </div>
         )}
@@ -267,6 +276,10 @@ export function MobileLayout({
           onNextTrack={playlistPlayer.nextTrack}
           onPrevTrack={playlistPlayer.prevTrack}
           onToggleTrackPlay={handleToggleTrackPlay}
+          shuffle={playlistPlayer.shuffle}
+          repeatMode={playlistPlayer.repeat}
+          onToggleShuffle={playlistPlayer.toggleShuffle}
+          onCycleRepeat={playlistPlayer.cycleRepeat}
         />
       )}
 

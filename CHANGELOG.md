@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Added (Issue #891 — プレイリスト管理+シャッフル再生+再生履歴)
+- `frontend/src/components/PlaybackControls.tsx`: シャッフルボタン・リピートボタン追加（`shuffle`/`repeatMode`/`onToggleShuffle`/`onCycleRepeat` props）
+- `frontend/src/components/MiniPlayer.tsx`: トラックモード時のシャッフル・リピートボタン追加
+- `frontend/src/components/NowPlayingScreen.tsx`: シャッフル・リピート props を PlaybackControls に転送
+- `frontend/src/hooks/usePlayHistory.ts`: localStorage ベースの再生履歴フック（最大20件、重複排除）
+- `frontend/src/components/PlayHistory.tsx`: 再生履歴コンポーネント（一覧表示・クリア・再生）
+- `api/routers/playlists.py`: `POST /api/playlists/{id}/duplicate` 複製エンドポイント追加
+- `api/routers/playlists.py`: `cover_image_url` フィールドを CRUD 全エンドポイントで対応
+- `api/schemas.py`: `PlaylistCreateBody`/`PlaylistUpdateBody`/各レスポンス型に `cover_image_url` 追加
+- `worker/models.py`: `Playlist` モデルに `cover_image_url` カラム追加
+- `alembic/versions/011_playlist_cover_image.py`: `cover_image_url` カラム追加マイグレーション
+- `frontend/src/components/PlaylistDetail.tsx`: 複製ボタン追加（`POST /api/playlists/{id}/duplicate` 呼び出し）
+
 ### Added (Issue #86 — bossanova/classical/electronic チャンネル無音問題の解消)
 - `scripts/fix_empty_channels.py`: 無音チャンネル修正スクリプト
   - Step 1: bossanova/classical/electronic のファントムレコード（ファイル未存在）を `is_retired=true` に更新
