@@ -160,6 +160,7 @@ export interface Playlist {
   id: string;
   name: string;
   description: string | null;
+  cover_image_url: string | null;
   track_count: number;
   created_at: string;
   updated_at: string;
@@ -185,11 +186,13 @@ export interface PlaylistListResponse {
 export interface PlaylistCreateBody {
   name: string;
   description?: string;
+  cover_image_url?: string;
 }
 
 export interface PlaylistUpdateBody {
   name?: string;
   description?: string;
+  cover_image_url?: string;
 }
 
 export interface PlaylistDeleteResponse {

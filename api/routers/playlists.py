@@ -94,6 +94,7 @@ async def create_playlist(
     playlist = Playlist(
         name=body.name,
         description=body.description,
+        cover_image_url=body.cover_image_url,
         session_id=session_id,
     )
     db.add(playlist)
@@ -104,6 +105,7 @@ async def create_playlist(
         id=playlist.id,
         name=playlist.name,
         description=playlist.description,
+        cover_image_url=playlist.cover_image_url,
         track_count=0,
         created_at=playlist.created_at,
         updated_at=playlist.updated_at,
@@ -146,6 +148,7 @@ async def list_playlists(
                 id=pl.id,
                 name=pl.name,
                 description=pl.description,
+                cover_image_url=pl.cover_image_url,
                 track_count=cnt,
                 created_at=pl.created_at,
                 updated_at=pl.updated_at,
@@ -204,6 +207,7 @@ async def get_playlist(
         id=playlist.id,
         name=playlist.name,
         description=playlist.description,
+        cover_image_url=playlist.cover_image_url,
         track_count=len(tracks),
         created_at=playlist.created_at,
         updated_at=playlist.updated_at,
@@ -228,6 +232,8 @@ async def update_playlist(
         values["name"] = body.name
     if body.description is not None:
         values["description"] = body.description
+    if body.cover_image_url is not None:
+        values["cover_image_url"] = body.cover_image_url
 
     await db.execute(
         update(Playlist).where(Playlist.id == playlist_id).values(**values)
@@ -240,6 +246,7 @@ async def update_playlist(
         id=playlist.id,
         name=playlist.name,
         description=playlist.description,
+        cover_image_url=playlist.cover_image_url,
         track_count=cnt,
         created_at=playlist.created_at,
         updated_at=playlist.updated_at,
@@ -261,6 +268,71 @@ async def delete_playlist(
     await db.commit()
 
     return Response(status_code=204)
+
+
+# --- POST /api/playlists/{playlist_id}/duplicate ---
+
+@router.post(
+    "/api/playlists/{playlist_id}/duplicate",
+    response_model=PlaylistResponse,
+    status_code=201,
+)
+async def duplicate_playlist(
+    playlist_id: uuid.UUID,
+    session_id: str = Depends(_require_session),
+    db: AsyncSession = Depends(get_session),
+) -> PlaylistResponse:
+    result = await db.execute(
+        select(Playlist)
+        .where(Playlist.id == playlist_id)
+        .options(selectinload(Playlist.playlist_tracks).selectinload(PlaylistTrack.track))
+    )
+    original = result.scalar_one_or_none()
+    if not original:
+        raise HTTPException(status_code=404, detail="プレイリストが見つかりません")
+    _check_owner(original, session_id)
+
+    count_result = await db.execute(
+        select(func.count())
+        .select_from(Playlist)
+        .where(Playlist.session_id == session_id)
+    )
+    if (count_result.scalar() or 0) >= MAX_PLAYLISTS_PER_SESSION:
+        raise HTTPException(
+            status_code=422,
+            detail=f"プレイリスト上限（{MAX_PLAYLISTS_PER_SESSION}件）に達しています",
+        )
+
+    new_playlist = Playlist(
+        name=f"{original.name} のコピー",
+        description=original.description,
+        cover_image_url=original.cover_image_url,
+        session_id=session_id,
+    )
+    db.add(new_playlist)
+    await db.flush()
+
+    for pt in sorted(original.playlist_tracks, key=lambda x: x.position):
+        new_pt = PlaylistTrack(
+            playlist_id=new_playlist.id,
+            track_id=pt.track_id,
+            position=pt.position,
+        )
+        db.add(new_pt)
+
+    await db.commit()
+    await db.refresh(new_playlist)
+
+    cnt = await _track_count(db, new_playlist.id)
+    return PlaylistResponse(
+        id=new_playlist.id,
+        name=new_playlist.name,
+        description=new_playlist.description,
+        cover_image_url=new_playlist.cover_image_url,
+        track_count=cnt,
+        created_at=new_playlist.created_at,
+        updated_at=new_playlist.updated_at,
+    )
 
 
 # --- POST /api/playlists/{playlist_id}/tracks --- (DR-004: bulk add)

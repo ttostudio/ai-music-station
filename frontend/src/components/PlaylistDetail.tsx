@@ -19,6 +19,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Copy,
   ListVideo,
 } from "lucide-react";
 import type {
@@ -32,6 +33,7 @@ import {
   getPlaylist,
   updatePlaylist,
   deletePlaylist,
+  duplicatePlaylist,
   addTrackToPlaylist,
   removeTrackFromPlaylist,
   reorderPlaylistTracks,
@@ -41,6 +43,7 @@ interface Props {
   playlistId: string;
   onBack: () => void;
   onDeleted: () => void;
+  onDuplicated?: (newPlaylistId: string) => void;
   fetchAllTracks: () => Promise<Track[]>;
   onPlayPlaylist?: (tracks: Track[], startIndex?: number) => void;
   onPlayTrack?: (track: Track, queue: Track[]) => void;
@@ -65,6 +68,7 @@ export function PlaylistDetail({
   playlistId,
   onBack,
   onDeleted,
+  onDuplicated,
   fetchAllTracks,
   onPlayPlaylist,
   onPlayTrack,
@@ -104,6 +108,11 @@ export function PlaylistDetail({
     if (!window.confirm(`「${detail.name}」を削除しますか？`)) return;
     await deletePlaylist(playlistId);
     onDeleted();
+  }
+
+  async function handleDuplicate() {
+    const newPlaylist = await duplicatePlaylist(playlistId);
+    onDuplicated?.(newPlaylist.id);
   }
 
   async function handleAddTracks(trackIds: string[]) {
@@ -217,6 +226,13 @@ export function PlaylistDetail({
             aria-label="編集"
           >
             <Pencil size={16} />
+          </button>
+          <button
+            className="playlist-detail-action-btn"
+            onClick={handleDuplicate}
+            aria-label="複製"
+          >
+            <Copy size={16} />
           </button>
           <button
             className="playlist-detail-action-btn playlist-detail-action-delete"

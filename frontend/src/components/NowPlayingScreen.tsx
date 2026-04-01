@@ -1,5 +1,6 @@
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import type { Track } from "../api/types";
+import type { RepeatMode } from "../hooks/usePlaylistPlayer";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { PlaybackControls } from "./PlaybackControls";
 import { ActionButtons } from "./ActionButtons";
@@ -20,6 +21,10 @@ interface Props {
   onLike: () => void;
   onLyrics: () => void;
   liked?: boolean;
+  shuffle?: boolean;
+  repeatMode?: RepeatMode;
+  onToggleShuffle?: () => void;
+  onCycleRepeat?: () => void;
 }
 
 export function NowPlayingScreen({
@@ -37,6 +42,10 @@ export function NowPlayingScreen({
   onLike,
   onLyrics,
   liked,
+  shuffle,
+  repeatMode,
+  onToggleShuffle,
+  onCycleRepeat,
 }: Props) {
   const title = track ? (track.title || track.caption) : "";
   const artist = `AI Music Station \u2022 ${channelName}`;
@@ -76,6 +85,10 @@ export function NowPlayingScreen({
         onPlayPause={onPlayPause}
         onSkipPrev={onSkipPrev}
         onSkipNext={onSkipNext}
+        shuffle={shuffle}
+        repeatMode={repeatMode}
+        onToggleShuffle={onToggleShuffle}
+        onCycleRepeat={onCycleRepeat}
       />
 
       {/* Action buttons */}
