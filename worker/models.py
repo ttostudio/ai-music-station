@@ -100,6 +100,9 @@ class Request(Base):
     ace_step_poll_count: Mapped[Optional[int]] = mapped_column(
         Integer, default=0
     )
+    vote_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -109,6 +112,7 @@ class Request(Base):
 
     channel: Mapped["Channel"] = relationship(back_populates="requests")
     track: Mapped[Optional["Track"]] = relationship(back_populates="request")
+    votes: Mapped[List["RequestVote"]] = relationship(back_populates="request")
 
     __table_args__ = (
         Index(
@@ -171,6 +175,28 @@ class Track(Base):
     __table_args__ = (
         Index("idx_tracks_channel", "channel_id", "created_at"),
         Index("idx_tracks_quality_score", "quality_score"),
+    )
+
+
+class RequestVote(Base):
+    __tablename__ = "request_votes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("requests.id"), nullable=False
+    )
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    request: Mapped["Request"] = relationship(back_populates="votes")
+
+    __table_args__ = (
+        UniqueConstraint("request_id", "session_id", name="uq_request_votes_request_session"),
+        Index("idx_request_votes_request", "request_id"),
     )
 
 
