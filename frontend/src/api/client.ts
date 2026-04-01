@@ -4,6 +4,7 @@ import type {
   ChannelDeleteResponse,
   ChannelFullResponse,
   ChannelListResponse,
+  ChannelRankingResponse,
   CreateRequestBody,
   GenerateRequestBody,
   NowPlayingResponse,
@@ -11,6 +12,8 @@ import type {
   ReactionStatusResponse,
   RequestDetailResponse,
   RequestResponse,
+  RequestVoteResponse,
+  RequestVoteStatusResponse,
   ShareLinkResponse,
   TrackListResponse,
   TrackQualityResponse,
@@ -179,5 +182,55 @@ export async function getAllRequests(
 ): Promise<AllRequestsListResponse> {
   return fetchJSON<AllRequestsListResponse>(
     `${BASE_URL}/requests?limit=${limit}`,
+  );
+}
+
+// --- Request Votes ---
+
+export async function addRequestVote(
+  requestId: string,
+  sessionId: string,
+): Promise<RequestVoteResponse> {
+  return fetchJSON<RequestVoteResponse>(
+    `${BASE_URL}/requests/${requestId}/votes`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    },
+  );
+}
+
+export async function removeRequestVote(
+  requestId: string,
+  sessionId: string,
+): Promise<RequestVoteResponse> {
+  return fetchJSON<RequestVoteResponse>(
+    `${BASE_URL}/requests/${requestId}/votes`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    },
+  );
+}
+
+export async function getRequestVoteStatus(
+  requestId: string,
+  sessionId: string,
+): Promise<RequestVoteStatusResponse> {
+  return fetchJSON<RequestVoteStatusResponse>(
+    `${BASE_URL}/requests/${requestId}/votes?session_id=${encodeURIComponent(sessionId)}`,
+  );
+}
+
+// --- Ranking ---
+
+export async function getChannelRanking(
+  slug: string,
+  limit = 5,
+): Promise<ChannelRankingResponse> {
+  return fetchJSON<ChannelRankingResponse>(
+    `${BASE_URL}/channels/${slug}/ranking?limit=${limit}`,
   );
 }

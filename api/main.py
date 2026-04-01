@@ -13,7 +13,9 @@ from api.routers import (
     playlists,
     podcasts,
     quality,
+    ranking,
     reactions,
+    request_votes,
     requests,
     shares,
     tracks,
@@ -37,6 +39,8 @@ app.include_router(requests.router)
 app.include_router(generate.router)
 app.include_router(tracks.router)
 app.include_router(reactions.router)
+app.include_router(request_votes.router)
+app.include_router(ranking.router)
 app.include_router(playlists.router)
 app.include_router(podcasts.router)
 app.include_router(shares.router)

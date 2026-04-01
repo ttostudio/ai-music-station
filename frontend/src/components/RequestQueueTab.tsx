@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getAllRequests } from "../api/client";
 import type { RequestDetailResponse } from "../api/types";
 import { Inbox } from "lucide-react";
+import { RequestVoteButton } from "./RequestVoteButton";
+import { ChannelRanking } from "./ChannelRanking";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "待機中",
@@ -24,6 +26,20 @@ function formatTime(dateStr: string): string {
   } catch {
     return "--:--";
   }
+}
+
+function sortRequests(requests: RequestDetailResponse[]): RequestDetailResponse[] {
+  return [...requests].sort((a, b) => {
+    // pending を投票数 DESC → created_at ASC でソート
+    if (a.status === "pending" && b.status === "pending") {
+      if (b.vote_count !== a.vote_count) return b.vote_count - a.vote_count;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+    // pending を先頭に
+    if (a.status === "pending") return -1;
+    if (b.status === "pending") return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 }
 
 export function RequestQueueTab() {
@@ -56,6 +72,12 @@ export function RequestQueueTab() {
     };
   }, []);
 
+  // 表示用チャンネルスラッグ（pending リクエストがある最初のチャンネル）
+  const rankingSlug =
+    requests.find((r) => r.status === "pending")?.channel_slug ??
+    requests[0]?.channel_slug ??
+    null;
+
   if (loading) {
     return (
       <div className="queue-tab-screen">
@@ -80,6 +102,8 @@ export function RequestQueueTab() {
     );
   }
 
+  const sorted = sortRequests(requests);
+
   return (
     <div className="queue-tab-screen">
       <div className="mobile-tab-header">
@@ -90,11 +114,11 @@ export function RequestQueueTab() {
         )}
       </div>
 
-      {requests.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="mobile-empty-state">リクエストはありません</div>
       ) : (
         <div className="queue-tab-list">
-          {requests.map((req) => {
+          {sorted.map((req) => {
             const statusClass = STATUS_CLASS[req.status] ?? "status-badge-pending";
             const label = STATUS_LABEL[req.status] ?? req.status;
 
@@ -111,6 +135,12 @@ export function RequestQueueTab() {
                   </div>
                 </div>
                 <div className="queue-tab-item-status">
+                  {req.status === "pending" && (
+                    <RequestVoteButton
+                      requestId={req.id}
+                      initialCount={req.vote_count}
+                    />
+                  )}
                   {req.status === "pending" && req.position != null && (
                     <span className="queue-tab-position">#{req.position}</span>
                   )}
@@ -123,6 +153,12 @@ export function RequestQueueTab() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {rankingSlug && (
+        <div className="queue-tab-ranking">
+          <ChannelRanking channelSlug={rankingSlug} />
         </div>
       )}
     </div>

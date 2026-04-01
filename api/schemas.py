@@ -67,6 +67,7 @@ class RequestDetailResponse(BaseModel):
     duration: int | None = None
     music_key: str | None = None
     position: int | None = None
+    vote_count: int = 0
     created_at: datetime
     started_at: datetime | None = None
     completed_at: datetime | None = None
@@ -419,6 +420,40 @@ class ReorderTracksBody(BaseModel):
 
 class ReorderTracksResponse(BaseModel):
     ok: bool
+
+
+# --- Request Vote ---
+
+class RequestVoteBody(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=100)
+
+
+class RequestVoteResponse(BaseModel):
+    ok: bool
+    count: int
+
+
+class RequestVoteStatusResponse(BaseModel):
+    count: int
+    user_voted: bool
+
+
+# --- Channel Ranking ---
+
+class RankingTrackResponse(BaseModel):
+    rank: int
+    id: uuid.UUID
+    title: str | None = None
+    caption: str
+    like_count: int
+    play_count: int
+    duration_ms: int | None = None
+    bpm: int | None = None
+
+
+class ChannelRankingResponse(BaseModel):
+    channel_slug: str
+    tracks: list[RankingTrackResponse]
 
 
 class FavoriteTrackInfo(BaseModel):

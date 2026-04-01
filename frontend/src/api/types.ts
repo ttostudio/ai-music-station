@@ -264,6 +264,7 @@ export interface RequestDetailResponse {
   duration: number | null;
   music_key: string | null;
   position: number | null;
+  vote_count: number;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -278,4 +279,34 @@ export interface RequestDetailResponse {
     play_count: number;
     created_at: string;
   } | null;
+}
+
+// --- Request Vote ---
+
+export interface RequestVoteResponse {
+  ok: boolean;
+  count: number;
+}
+
+export interface RequestVoteStatusResponse {
+  count: number;
+  user_voted: boolean;
+}
+
+// --- Channel Ranking ---
+
+export interface RankingTrack {
+  rank: number;
+  id: string;
+  title: string | null;
+  caption: string;
+  like_count: number;
+  play_count: number;
+  duration_ms: number | null;
+  bpm: number | null;
+}
+
+export interface ChannelRankingResponse {
+  channel_slug: string;
+  tracks: RankingTrack[];
 }
