@@ -44,7 +44,8 @@ def sample_channel():
         is_active=True,
         default_bpm_min=70,
         default_bpm_max=90,
-        default_duration=180,
+        min_duration=180,
+        max_duration=600,
         default_instrumental=True,
         prompt_template="lo-fi hip hop",
     )
@@ -143,7 +144,7 @@ class TestSearchTracks:
         ch = Channel(
             id=uuid.uuid4(), slug="lofi", name="LoFi", description="",
             is_active=True, default_bpm_min=70, default_bpm_max=90,
-            default_duration=180, default_instrumental=True, prompt_template="",
+            min_duration=180, max_duration=600, default_instrumental=True, prompt_template="",
         )
         t = Track(
             id=uuid.uuid4(), channel_id=ch.id,

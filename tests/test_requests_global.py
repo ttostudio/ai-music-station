@@ -43,7 +43,8 @@ def _make_channel(slug: str = "lofi") -> Channel:
         is_active=True,
         default_bpm_min=70,
         default_bpm_max=90,
-        default_duration=180,
+        min_duration=180,
+        max_duration=600,
         default_instrumental=True,
         prompt_template="",
     )

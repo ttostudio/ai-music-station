@@ -14,7 +14,8 @@ const INITIAL_VALUES: ChannelCreateBody = {
   mood_description: null,
   default_bpm_min: 80,
   default_bpm_max: 120,
-  default_duration: 180,
+  min_duration: 180,
+  max_duration: 600,
   default_key: null,
   default_instrumental: true,
   prompt_template: "",
@@ -39,7 +40,8 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         mood_description: channel.mood_description,
         default_bpm_min: channel.default_bpm_min,
         default_bpm_max: channel.default_bpm_max,
-        default_duration: channel.default_duration,
+        min_duration: channel.min_duration,
+        max_duration: channel.max_duration,
         default_key: channel.default_key,
         default_instrumental: channel.default_instrumental,
         prompt_template: channel.prompt_template,
@@ -72,12 +74,12 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
       setError("チャンネル名は必須です");
       return;
     }
-    if (!form.prompt_template.trim()) {
-      setError("プロンプトテンプレートは必須です");
-      return;
-    }
     if ((form.default_bpm_min ?? 80) >= (form.default_bpm_max ?? 120)) {
       setError("BPM最小値は最大値より小さくしてください");
+      return;
+    }
+    if ((form.min_duration ?? 180) > (form.max_duration ?? 600)) {
+      setError("再生時間（最小）は最大以下にしてください");
       return;
     }
 
@@ -150,7 +152,7 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
         />
       </label>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <label className="block">
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>BPM最小</span>
           <input
@@ -174,11 +176,22 @@ export function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
           />
         </label>
         <label className="block">
-          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>再生時間(秒)</span>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>再生時間最小(秒)</span>
           <input
             type="number"
-            value={form.default_duration ?? 180}
-            onChange={(e) => update("default_duration", Number(e.target.value))}
+            value={form.min_duration ?? 180}
+            onChange={(e) => update("min_duration", Number(e.target.value))}
+            min={10}
+            max={600}
+            className="w-full mt-1 px-3 py-2 input-glass"
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>再生時間最大(秒)</span>
+          <input
+            type="number"
+            value={form.max_duration ?? 600}
+            onChange={(e) => update("max_duration", Number(e.target.value))}
             min={10}
             max={600}
             className="w-full mt-1 px-3 py-2 input-glass"

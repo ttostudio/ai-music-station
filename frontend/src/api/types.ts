@@ -19,7 +19,8 @@ export interface Channel {
 export interface ChannelDetail extends Channel {
   default_bpm_min: number;
   default_bpm_max: number;
-  default_duration: number;
+  min_duration: number;
+  max_duration: number;
   default_instrumental: boolean;
 }
 
@@ -34,10 +35,11 @@ export interface ChannelCreateBody {
   mood_description?: string | null;
   default_bpm_min?: number;
   default_bpm_max?: number;
-  default_duration?: number;
+  min_duration?: number;
+  max_duration?: number;
   default_key?: string | null;
   default_instrumental?: boolean;
-  prompt_template: string;
+  prompt_template?: string;
   vocal_language?: string | null;
   auto_generate?: boolean;
   min_stock?: number;
@@ -53,7 +55,8 @@ export interface ChannelFullResponse {
   is_active: boolean;
   default_bpm_min: number;
   default_bpm_max: number;
-  default_duration: number;
+  min_duration: number;
+  max_duration: number;
   default_key: string | null;
   default_instrumental: boolean;
   prompt_template: string;
