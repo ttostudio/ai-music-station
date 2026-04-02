@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added (Issue #924 — BGMシーン自動マッチング対応)
+- `alembic/versions/014_track_scene_tags.py`: `track_scene_tags` テーブル追加（BGMシーンタグ管理）
+- `worker/models.py`: `TrackSceneTag` モデル追加（Track との1対多リレーション）
+- `api/routers/bgm_candidates.py`: BGM候補エンドポイント3件追加
+  - `GET /api/tracks/bgm-candidates`: シーンタグ条件でBGM候補取得（スコアリング付き）
+  - `GET /api/tracks/scene-tags`: シーンタグ付き楽曲一覧取得
+  - `POST /api/tracks/{track_id}/scene-tags`: 楽曲へのシーンタグ付与（upsert）
+
 ### Added (Issue #891 — プレイリスト管理+シャッフル再生+再生履歴)
 - `frontend/src/components/PlaybackControls.tsx`: シャッフルボタン・リピートボタン追加（`shuffle`/`repeatMode`/`onToggleShuffle`/`onCycleRepeat` props）
 - `frontend/src/components/MiniPlayer.tsx`: トラックモード時のシャッフル・リピートボタン追加
