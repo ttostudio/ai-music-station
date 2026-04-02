@@ -172,10 +172,43 @@ class Track(Base):
         back_populates="track"
     )
     channel: Mapped["Channel"] = relationship(back_populates="tracks")
+    scene_tags: Mapped[List["TrackSceneTag"]] = relationship(
+        back_populates="track", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("idx_tracks_channel", "channel_id", "created_at"),
         Index("idx_tracks_quality_score", "quality_score"),
+    )
+
+
+class TrackSceneTag(Base):
+    """楽曲シーン適合タグ (#924)"""
+
+    __tablename__ = "track_scene_tags"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tracks.id", ondelete="CASCADE"), nullable=False
+    )
+    # 'scene_type' | 'emotion' | 'tempo_feel' | 'genre_feel'
+    tag_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    tag_value: Mapped[str] = mapped_column(String(64), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0, server_default="1.0")
+    # 'manual' | 'auto'
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual", server_default="manual")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    track: Mapped["Track"] = relationship(back_populates="scene_tags")
+
+    __table_args__ = (
+        Index("idx_track_scene_tags_track", "track_id"),
+        Index("idx_track_scene_tags_type_value", "tag_type", "tag_value"),
+        UniqueConstraint("track_id", "tag_type", "tag_value", name="idx_track_scene_tags_unique"),
     )
 
 

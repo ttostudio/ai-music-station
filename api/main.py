@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from api.routers import (
     analytics,
+    bgm_candidates,
     channels,
     generate,
     health,
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AI Music Station", version="0.1.0", lifespan=lifespan)
 
 app.include_router(health.router)
+app.include_router(bgm_candidates.router)
 app.include_router(channels.router)
 app.include_router(requests.router)
 app.include_router(generate.router)
