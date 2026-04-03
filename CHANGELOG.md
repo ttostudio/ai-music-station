@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added (Issue #939 — generate-being-tracks.py チャンネル設定API連携 + ACE-Stepスケジュール起動)
+- `scripts/generate-being-tracks.py`: `validate_slug()` 関数追加（channel_slug のURLインジェクション対策）
+- `scripts/generate-being-tracks.py`: `fetch_channel_config()` 関数追加（Music Station API `/api/channels/{slug}` から min_duration/max_duration を取得）
+- `scripts/generate-being-tracks.py`: `--channel` / `--music-api-url` CLI引数追加。API取得値優先、失敗時は既存 `--min-duration`/`--max-duration` にフォールバック
+- `scripts/schedule-acestep.sh`: ACE-Stepスケジュール起動スクリプト新規作成（ComfyUI停止→ACE-Step起動→楽曲生成→ACE-Step停止→ComfyUI再起動、ロック管理付き）
+
 ### Added (Issue #924 — BGMシーン自動マッチング対応)
 - `alembic/versions/014_track_scene_tags.py`: `track_scene_tags` テーブル追加（BGMシーンタグ管理）
 - `worker/models.py`: `TrackSceneTag` モデル追加（Track との1対多リレーション）
