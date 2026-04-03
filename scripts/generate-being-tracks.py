@@ -156,7 +156,7 @@ def validate_slug(slug: str) -> bool:
 
 def fetch_channel_config(music_api_url: str, channel_slug: str) -> dict | None:
     try:
-        resp = httpx.get(f"{music_api_url}/channels/{channel_slug}", timeout=5.0)
+        resp = httpx.get(f"{music_api_url.rstrip('/')}/channels/{channel_slug}", timeout=5.0)
         resp.raise_for_status()
         data = resp.json()
         return {"min_duration": data.get("min_duration", 180), "max_duration": data.get("max_duration", 600)}

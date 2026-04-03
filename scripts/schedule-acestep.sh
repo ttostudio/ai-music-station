@@ -27,9 +27,33 @@ fi
 echo $$ > "$LOCK_FILE"
 trap "rm -f $LOCK_FILE" EXIT
 
+# GPU メモリ確認（Apple Silicon / NVIDIA 両対応）
+check_gpu() {
+    if command -v nvidia-smi &> /dev/null; then
+        # NVIDIA GPU
+        FREE_VRAM=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | head -1)
+        if [ "$FREE_VRAM" -lt 8000 ]; then
+            log "✗ VRAM 空き不足: ${FREE_VRAM}MB（要8GB以上）"
+            return 1
+        fi
+        log "GPU VRAM 空き: ${FREE_VRAM}MB"
+    else
+        # Apple Silicon — 統合メモリのため VRAM 専用チェック不可
+        log "Apple Silicon 検出: GPU メモリチェックをスキップ"
+    fi
+    return 0
+}
+
 # 1. ComfyUI 停止（GPU共有）
 log "ComfyUI 停止中..."
 docker stop "$COMFYUI_CONTAINER" 2>/dev/null || log "ComfyUI は既に停止"
+
+# 1.5. GPU メモリ確認
+if ! check_gpu; then
+    log "GPU メモリ不足のため中断。ComfyUI を再起動します"
+    docker start "$COMFYUI_CONTAINER" 2>/dev/null || true
+    exit 1
+fi
 
 # 2. ACE-Step 起動
 log "ACE-Step 起動中..."
