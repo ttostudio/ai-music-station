@@ -3,11 +3,14 @@
 
 使い方:
   python3 scripts/generate-being-tracks.py [--api-url URL] [--count N] [--dry-run]
+  python3 scripts/generate-being-tracks.py --channel being --music-api-url http://localhost:3600/api
 """
 import argparse
 import base64
 import json
 import os
+import random
+import re
 import sys
 import time
 from pathlib import Path
@@ -146,13 +149,34 @@ BEING_PROMPTS = [
 
 from typing import Optional
 
+
+def validate_slug(slug: str) -> bool:
+    return bool(re.match(r'^[a-z0-9_-]+$', slug))
+
+
+def fetch_channel_config(music_api_url: str, channel_slug: str) -> dict | None:
+    try:
+        resp = httpx.get(f"{music_api_url.rstrip('/')}/channels/{channel_slug}", timeout=5.0)
+        resp.raise_for_status()
+        data = resp.json()
+        return {"min_duration": data.get("min_duration", 180), "max_duration": data.get("max_duration", 600)}
+    except Exception as e:
+        print(f"⚠ チャンネル設定取得失敗（フォールバック使用）: {e}")
+        return None
+
+
 def generate_track(client: httpx.Client, api_url: str, prompt_data: dict, duration: int = 10) -> Optional[bytes]:
-    """ACE-Step APIで楽曲を生成し、MP3バイトを返す。/release_task API使用（use_tiled_decode=false必須）。"""
+    """ACE-Step APIで楽曲を生成し、MP3バイトを返す。/release_task API使用（use_tiled_decode=false必須）。
+
+    query_result API仕様:
+      - パラメータ: task_id_list (list of task_id strings)
+      - レスポンス status: 0=running, 1=succeeded, 2=failed
+      - 成功時: result JSON内の file フィールドにローカルファイルパス
+    """
     payload = {
         "prompt": prompt_data["prompt"],
         "lyrics": prompt_data.get("lyrics", ""),
         "audio_duration": duration,
-        "infer_step": 60,
         "audio_format": "mp3",
         "use_tiled_decode": False,
     }
@@ -173,34 +197,72 @@ def generate_track(client: httpx.Client, api_url: str, prompt_data: dict, durati
 
         print(f"  ジョブ投入: {job_id}")
 
-        for _ in range(60):
+        # duration に応じてタイムアウトを調整（240s楽曲は生成に10分以上かかりうる）
+        max_polls = max(120, duration * 2)
+        for poll_i in range(max_polls):
             time.sleep(5)
             poll = client.post(
                 f"{api_url}/query_result",
-                json={"job_ids": [job_id]},
+                json={"task_id_list": [job_id]},
                 timeout=10.0,
             )
             poll.raise_for_status()
             result = poll.json()
             data = result.get("data", [])
-            jobs = data if isinstance(data, list) else data.get("results", [])
-            if not jobs:
+            if not data:
                 continue
-            job = jobs[0]
-            status = job.get("status", "")
-            if status == "completed":
-                audio_url = job.get("audio_url", "")
-                if "base64," in audio_url:
-                    b64_data = audio_url.split(",", 1)[1]
-                    return base64.b64decode(b64_data)
-                else:
-                    print(f"  ⚠ 予期しないaudio_url形式: {str(audio_url)[:50]}...")
-                    return None
-            elif status == "failed":
-                print(f"  ✗ 生成失敗: {job.get('error', 'unknown')}")
-                return None
+            job = data[0]
+            status_code = job.get("status", 0)
 
-        print(f"  ✗ タイムアウト（5分）")
+            if status_code == 1:  # succeeded
+                # result は JSON文字列でラップされている
+                result_str = job.get("result", "[]")
+                try:
+                    result_items = json.loads(result_str) if isinstance(result_str, str) else result_str
+                except json.JSONDecodeError:
+                    result_items = []
+                if not result_items:
+                    print(f"  ⚠ 成功だがresultが空")
+                    return None
+                file_field = result_items[0].get("file", "") if isinstance(result_items, list) else ""
+                if not file_field:
+                    print(f"  ⚠ fileフィールドが空")
+                    return None
+                # file_field は /v1/audio?path=... 形式のURLパス
+                # URLパースしてpathパラメータからローカルファイルパスを抽出
+                if file_field.startswith("/v1/audio"):
+                    from urllib.parse import urlparse, parse_qs, unquote
+                    parsed = urlparse(file_field)
+                    qs = parse_qs(parsed.query)
+                    local_path = unquote(qs.get("path", [""])[0])
+                    if local_path and os.path.exists(local_path):
+                        print(f"  ✓ 生成完了: {local_path}")
+                        return Path(local_path).read_bytes()
+                    else:
+                        # HTTP経由で取得を試みる
+                        audio_url = f"{api_url}{file_field}"
+                        print(f"  ローカルパス不在、HTTP取得: {audio_url[:80]}")
+                        audio_resp = client.get(audio_url, timeout=30.0)
+                        if audio_resp.status_code == 200:
+                            return audio_resp.content
+                        print(f"  ⚠ HTTP取得失敗: {audio_resp.status_code}")
+                        return None
+                elif os.path.exists(file_field):
+                    print(f"  ✓ 生成完了: {file_field}")
+                    return Path(file_field).read_bytes()
+                else:
+                    print(f"  ⚠ ファイルが見つからない: {file_field}")
+                    return None
+            elif status_code == 2:  # failed
+                result_str = job.get("result", "[]")
+                print(f"  ✗ 生成失敗: {result_str[:200]}")
+                return None
+            # status_code == 0: still running
+            if poll_i > 0 and poll_i % 12 == 0:
+                progress = job.get("progress_text", "")
+                print(f"    ... まだ処理中 ({poll_i * 5}s経過) {progress[:80]}")
+
+        print(f"  ✗ タイムアウト（{max_polls * 5}秒）")
         return None
 
     except httpx.TimeoutException:
@@ -215,16 +277,35 @@ def main():
     parser = argparse.ArgumentParser(description="ビーイング系楽曲生成")
     parser.add_argument("--api-url", default="http://localhost:8001", help="ACE-Step API URL")
     parser.add_argument("--count", type=int, default=len(BEING_PROMPTS), help="生成曲数")
-    parser.add_argument("--duration", type=int, default=10, help="楽曲長さ(秒)")
+    parser.add_argument("--min-duration", type=int, default=180, help="最小楽曲長さ(秒)")
+    parser.add_argument("--max-duration", type=int, default=600, help="最大楽曲長さ(秒)")
     parser.add_argument("--dry-run", action="store_true", help="生成せずプロンプト確認のみ")
+    parser.add_argument("--channel", default="being", help="チャンネルslug")
+    parser.add_argument("--music-api-url", default="http://localhost:3600/api", help="Music Station API URL")
     args = parser.parse_args()
+
+    # channel_slug バリデーション
+    if not validate_slug(args.channel):
+        print(f"✗ 無効なチャンネルslug: {args.channel}")
+        sys.exit(1)
+
+    # チャンネル設定取得（dry-run でも実行）
+    config = fetch_channel_config(args.music_api_url, args.channel)
+    if config:
+        min_dur = config["min_duration"]
+        max_dur = config["max_duration"]
+        print(f"チャンネル設定取得: duration={min_dur}-{max_dur}s")
+    else:
+        min_dur = args.min_duration
+        max_dur = args.max_duration
+        print(f"フォールバック: duration={min_dur}-{max_dur}s")
 
     BEING_TRACKS_DIR.mkdir(parents=True, exist_ok=True)
 
     prompts = BEING_PROMPTS[:args.count]
 
     if args.dry_run:
-        print(f"=== Dry Run: {len(prompts)}曲 ===")
+        print(f"=== Dry Run: {len(prompts)}曲 (duration={min_dur}-{max_dur}s) ===")
         for p in prompts:
             print(f"  - {p['title']}: {p['prompt'][:80]}...")
         return
@@ -243,7 +324,8 @@ def main():
 
     for i, prompt_data in enumerate(prompts):
         print(f"\n[{i+1}/{len(prompts)}] {prompt_data['title']}")
-        mp3_bytes = generate_track(client, args.api_url, prompt_data, args.duration)
+        duration = random.randint(min_dur, max_dur)
+        mp3_bytes = generate_track(client, args.api_url, prompt_data, duration)
 
         if mp3_bytes:
             filename = f"{prompt_data['title'].lower().replace(' ', '_')}.mp3"
