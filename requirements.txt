@@ -27,4 +27,4 @@ pytest-cov==7.1.0
 pyyaml==6.0.3
 
 # Linting
-ruff==0.15.8
+ruff==0.15.9
