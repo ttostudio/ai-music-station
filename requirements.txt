@@ -1,6 +1,6 @@
 # API
 fastapi==0.135.2
-uvicorn[standard]==0.42.0
+uvicorn[standard]==0.43.0
 pydantic-settings==2.13.1
 python-multipart==0.0.22
 
